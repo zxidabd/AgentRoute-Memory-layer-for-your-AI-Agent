@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: agentroute-memory-layer
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz/liveness
+    envVars:
+      - key: PORT
+        value: 8000
