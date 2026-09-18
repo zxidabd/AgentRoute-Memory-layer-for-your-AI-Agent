@@ -9,19 +9,29 @@ from .config import settings
 from .models.db_models import Base
 
 
-# Configure connection pooling
+# Configure connection pooling and URI normalization (e.g. Supabase postgres:// -> postgresql://)
+def normalize_db_url(url: str) -> str:
+    if not url:
+        return url
+    trimmed = url.strip()
+    if trimmed.startswith("postgres://"):
+        trimmed = trimmed.replace("postgres://", "postgresql://", 1)
+    return trimmed
+
+primary_db_url = normalize_db_url(settings.database_url)
+
 connect_args = {}
-if settings.database_url.startswith("sqlite"):
+if primary_db_url.startswith("sqlite"):
     connect_args["check_same_thread"] = False
     engine = create_engine(
-        settings.database_url,
+        primary_db_url,
         connect_args=connect_args,
         echo=False
     )
 else:
-    # Production PostgreSQL pool
+    # Production PostgreSQL / Supabase pool
     engine = create_engine(
-        settings.database_url,
+        primary_db_url,
         pool_size=settings.database_pool_size,
         max_overflow=settings.database_max_overflow,
         pool_timeout=settings.database_timeout_seconds,
@@ -32,14 +42,15 @@ else:
 SessionFactory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Read-Replica connection pool for high-throughput context recalls (falls back to primary engine)
-if settings.read_database_url and settings.read_database_url.strip():
+replica_db_url = normalize_db_url(settings.read_database_url)
+if replica_db_url:
     read_connect_args = {}
-    if settings.read_database_url.startswith("sqlite"):
+    if replica_db_url.startswith("sqlite"):
         read_connect_args["check_same_thread"] = False
-        read_engine = create_engine(settings.read_database_url, connect_args=read_connect_args, echo=False)
+        read_engine = create_engine(replica_db_url, connect_args=read_connect_args, echo=False)
     else:
         read_engine = create_engine(
-            settings.read_database_url,
+            replica_db_url,
             pool_size=settings.database_pool_size,
             max_overflow=settings.database_max_overflow,
             pool_timeout=settings.database_timeout_seconds,
@@ -51,6 +62,7 @@ else:
     read_engine = engine
     ReadSessionFactory = SessionFactory
 
+
 # Attach SOC 2 compliance immutability guards
 from .compliance.immutability_guard import attach_immutability_guards
 attach_immutability_guards(SessionFactory)
@@ -61,11 +73,12 @@ if ReadSessionFactory is not SessionFactory:
 def init_db():
     """Initializes all database tables and indexes."""
     # If on PostgreSQL, ensure pgvector extension exists
-    if not settings.database_url.startswith("sqlite"):
+    if not primary_db_url.startswith("sqlite"):
         try:
             with engine.connect() as conn:
                 conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
                 conn.commit()
+
         except Exception:
             pass
 

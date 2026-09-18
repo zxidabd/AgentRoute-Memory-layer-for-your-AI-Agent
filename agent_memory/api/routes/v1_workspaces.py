@@ -2,6 +2,8 @@
 
 import uuid
 import secrets
+import hashlib
+import hmac
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field, EmailStr
@@ -9,7 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Header, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from ...database import get_db_session
-from ...models.db_models import Organization, Project, Membership, Invitation, APIKey
+from ...models.db_models import Organization, Project, Membership, Invitation, APIKey, UserAccount
+
 from ...auth.rbac_middleware import (
     AuthContext,
     AppRole,
@@ -19,6 +22,8 @@ from ...auth.rbac_middleware import (
 )
 from ...auth.api_key_service import APIKeyService
 from ...auth.clerk_service import ClerkService
+from ...services.email_service import EmailService
+
 
 router = APIRouter(tags=["Workspaces & Team RBAC (v1)"])
 
@@ -52,15 +57,60 @@ class RoleUpdateRequest(BaseModel):
     role: str = Field(..., description="New role: owner, developer, viewer")
 
 
+
+def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """Ensures a datetime object is timezone-aware in UTC for safe comparison."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def hash_password(password: str) -> str:
+
+    """PBKDF2-HMAC-SHA256 salted password hashing."""
+    salt = secrets.token_hex(16)
+    key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt.encode('utf-8'), 100000).hex()
+    return f"{salt}:{key}"
+
+def verify_password(stored_password_hash: str, provided_password: str) -> bool:
+    """Verifies provided password against stored salted PBKDF2 hash."""
+    if not stored_password_hash or ":" not in stored_password_hash:
+        return False
+    salt, key = stored_password_hash.split(":", 1)
+    new_key = hashlib.pbkdf2_hmac('sha256', provided_password.encode('utf-8'), salt.encode('utf-8'), 100000).hex()
+    return hmac.compare_digest(key, new_key)
+
 class SignupRequest(BaseModel):
     name: str = Field(..., description="Developer or founder full name")
     email: EmailStr = Field(..., description="Work email address")
+    password: Optional[str] = Field(default=None, description="Account password")
     organization_name: Optional[str] = Field(default=None, description="Company or workspace name")
     tier: str = Field(default="starter", description="starter, growth, scale, enterprise")
 
 
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr = Field(..., description="User email address")
+    code: str = Field(..., description="6-digit verification code")
+
+
+class ResendCodeRequest(BaseModel):
+    email: EmailStr = Field(..., description="User email address")
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr = Field(..., description="User email address")
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., description="Password reset token")
+    new_password: str = Field(..., description="New account password")
+
+
 class LoginRequest(BaseModel):
     email: Optional[str] = Field(default=None, description="Email address to log in")
+    password: Optional[str] = Field(default=None, description="Account password")
     api_key: Optional[str] = Field(default=None, description="Active API key to log in")
 
 
@@ -467,90 +517,214 @@ async def clerk_webhook(
 
 # --- Self-Serve Signup & Login Routes ---
 
-@router.post("/v1/auth/signup", summary="Self-Serve Developer Signup")
+@router.post("/v1/auth/signup", summary="Self-Serve Developer Signup with Resend Verification")
 def self_serve_signup(
     payload: SignupRequest,
     db: Session = Depends(get_db_session)
 ) -> Dict[str, Any]:
-    existing_mem = db.query(Membership).filter(Membership.email == payload.email).first()
-    if existing_mem:
-        org = db.query(Organization).filter(Organization.id == existing_mem.org_id).first()
+    clean_email = payload.email.strip().lower()
+
+    # Check UserAccount
+    user = db.query(UserAccount).filter(UserAccount.email == clean_email).first()
+    if user and user.is_verified:
+        raise HTTPException(status_code=400, detail="An account with this email already exists. Please sign in.")
+
+    # Generate 6-digit confirmation code
+    otp_code = str(secrets.randbelow(900000) + 100000)
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(minutes=15)
+    pw_hash = hash_password(payload.password) if payload.password else hash_password(secrets.token_hex(8))
+
+    if user:
+        user.name = payload.name
+        user.password_hash = pw_hash
+        user.verification_code = otp_code
+        user.verification_code_expires_at = expires_at
+        user.updated_at = now
+    else:
+        user = UserAccount(
+            id=f"usr_{secrets.token_hex(6)}",
+            email=clean_email,
+            password_hash=pw_hash,
+            name=payload.name,
+            is_verified=False,
+            verification_code=otp_code,
+            verification_code_expires_at=expires_at,
+            created_at=now,
+            updated_at=now
+        )
+        db.add(user)
+    db.commit()
+
+    # Dispatch confirmation email via Resend
+    EmailService.send_signup_verification(clean_email, payload.name, otp_code)
+
+    return {
+        "status": "pending_verification",
+        "email": clean_email,
+        "message": f"Verification code sent to {clean_email}. Please enter the 6-digit code to activate your account."
+    }
+
+
+@router.post("/v1/auth/verify-email", summary="Confirm Email with 6-Digit OTP Code")
+def verify_email(
+    payload: VerifyEmailRequest,
+    db: Session = Depends(get_db_session)
+) -> Dict[str, Any]:
+    clean_email = payload.email.strip().lower()
+    user = db.query(UserAccount).filter(UserAccount.email == clean_email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Account not found. Please sign up.")
+
+    now = datetime.now(timezone.utc)
+    if not user.is_verified:
+        if not user.verification_code or user.verification_code != payload.code.strip():
+            raise HTTPException(status_code=400, detail="Invalid verification code.")
+        exp = ensure_utc(user.verification_code_expires_at)
+        if exp and now > exp:
+            raise HTTPException(status_code=400, detail="Verification code has expired. Please request a new code.")
+
+
+        user.is_verified = True
+        user.verification_code = None
+        user.updated_at = now
+        db.commit()
+
+    # Ensure Organization, Project, and APIKey exist for verified user
+    mem = db.query(Membership).filter(Membership.email == clean_email).first()
+    if not mem:
+        org_name = f"{user.name.split()[0]}'s Workspace" if user.name else "My Workspace"
+        base_slug = org_name.lower().replace(" ", "-").replace(".", "")
+        clean_slug = f"{base_slug}-{secrets.token_hex(3)}"
+        org = Organization(
+            id=f"org_{secrets.token_hex(6)}",
+            name=org_name,
+            slug=clean_slug,
+            tier="starter",
+            subscription_status="active",
+            created_at=datetime.now(timezone.utc)
+        )
+        db.add(org)
+        db.commit()
+
+        project = Project(
+            id=f"proj_{secrets.token_hex(6)}",
+            org_id=org.id,
+            name="Production Agent",
+            environment="prod",
+            created_at=datetime.now(timezone.utc)
+        )
+        db.add(project)
+
+        mem = Membership(
+            id=f"mem_{secrets.token_hex(6)}",
+            org_id=org.id,
+            clerk_user_id=user.id,
+            email=clean_email,
+            name=user.name,
+            role="owner",
+            created_at=datetime.now(timezone.utc)
+        )
+        db.add(mem)
+        db.commit()
+
+        key_res = APIKeyService.generate_api_key(
+            db=db,
+            org_id=org.id,
+            name="Default Live Key",
+            role="owner",
+            project_id=project.id,
+            environment="prod"
+        )
+        api_key = key_res["api_key"]
+        EmailService.send_welcome_email(clean_email, user.name or "Developer", api_key)
+    else:
+        org = db.query(Organization).filter(Organization.id == mem.org_id).first()
         proj = db.query(Project).filter(Project.org_id == org.id).first() if org else None
         key_res = APIKeyService.generate_api_key(
             db=db,
             org_id=org.id if org else "org_default",
-            name=f"Login Key {secrets.token_hex(3)}",
-            role=existing_mem.role,
+            name=f"Session Key {secrets.token_hex(2)}",
+            role="owner",
             project_id=proj.id if proj else None,
             environment="prod"
         )
-        return {
-            "status": "existing_user",
-            "message": "Welcome back! Account found and new key provisioned.",
-            "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None,
-            "project_id": proj.id if proj else None,
-            "api_key": key_res["api_key"],
-            "user": {"email": existing_mem.email, "name": existing_mem.name}
-        }
-
-    org_name = payload.organization_name or f"{payload.name.split()[0]}'s Workspace"
-    base_slug = org_name.lower().replace(" ", "-").replace(".", "")
-    clean_slug = f"{base_slug}-{secrets.token_hex(3)}"
-    org_id = f"org_{secrets.token_hex(6)}"
-
-    org = Organization(
-        id=org_id,
-        name=org_name,
-        slug=clean_slug,
-        tier=payload.tier.lower() if payload.tier.lower() in ("starter", "growth", "scale", "enterprise") else "starter",
-        subscription_status="active",
-        created_at=datetime.now(timezone.utc)
-    )
-    db.add(org)
-
-    project_id = f"proj_{secrets.token_hex(6)}"
-    project = Project(
-        id=project_id,
-        org_id=org.id,
-        name="Production Agent",
-        environment="prod",
-        created_at=datetime.now(timezone.utc)
-    )
-    db.add(project)
-
-    clerk_id = f"user_{secrets.token_hex(8)}"
-    membership = Membership(
-        id=f"mem_{secrets.token_hex(6)}",
-        org_id=org.id,
-        clerk_user_id=clerk_id,
-        email=payload.email,
-        name=payload.name,
-        role="owner",
-        created_at=datetime.now(timezone.utc)
-    )
-    db.add(membership)
-    db.commit()
-
-    key_res = APIKeyService.generate_api_key(
-        db=db,
-        org_id=org.id,
-        name="Default Live Key",
-        role="owner",
-        project_id=project.id,
-        environment="prod"
-    )
+        api_key = key_res["api_key"]
 
     return {
-        "status": "created",
-        "message": "Welcome to MemoryBrain! Workspace and API key successfully provisioned.",
-        "org": {"id": org.id, "name": org.name, "slug": org.slug, "tier": org.tier},
-        "project": {"id": project.id, "name": project.name},
-        "api_key": key_res["api_key"],
-        "user": {"email": payload.email, "name": payload.name, "role": "owner"}
+        "status": "verified",
+        "message": "Email verified successfully! Workspace ready.",
+        "api_key": api_key,
+        "user": {"email": user.email, "name": user.name, "role": "owner"},
+        "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None
     }
 
 
-@router.post("/v1/auth/login", summary="Self-Serve Developer Login")
+@router.post("/v1/auth/resend-code", summary="Resend 6-Digit Email Verification Code")
+def resend_verification_code(
+    payload: ResendCodeRequest,
+    db: Session = Depends(get_db_session)
+) -> Dict[str, Any]:
+    clean_email = payload.email.strip().lower()
+    user = db.query(UserAccount).filter(UserAccount.email == clean_email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Account not found.")
+    if user.is_verified:
+        return {"status": "already_verified", "message": "This email is already verified. Please sign in."}
+
+    otp_code = str(secrets.randbelow(900000) + 100000)
+    user.verification_code = otp_code
+    user.verification_code_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+    db.commit()
+
+    EmailService.send_signup_verification(clean_email, user.name or "Developer", otp_code)
+    return {"status": "sent", "message": f"Fresh verification code sent to {clean_email}."}
+
+
+@router.post("/v1/auth/forgot-password", summary="Request Password Reset Link via Resend")
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    db: Session = Depends(get_db_session)
+) -> Dict[str, Any]:
+    clean_email = payload.email.strip().lower()
+    user = db.query(UserAccount).filter(UserAccount.email == clean_email).first()
+    if user:
+        reset_token = secrets.token_urlsafe(32)
+        user.reset_token = reset_token
+        user.reset_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+        db.commit()
+        EmailService.send_password_reset(clean_email, reset_token)
+
+    return {
+        "status": "success",
+        "message": "If an account exists with that email, a password reset link has been dispatched."
+    }
+
+
+@router.post("/v1/auth/reset-password", summary="Reset Password with Secure Token")
+def reset_password(
+    payload: ResetPasswordRequest,
+    db: Session = Depends(get_db_session)
+) -> Dict[str, Any]:
+    now = datetime.now(timezone.utc)
+    user = db.query(UserAccount).filter(UserAccount.reset_token == payload.token.strip()).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired password reset token.")
+    exp = ensure_utc(user.reset_token_expires_at)
+    if exp and now > exp:
+        raise HTTPException(status_code=400, detail="Password reset token has expired. Please request a new one.")
+
+
+    user.password_hash = hash_password(payload.new_password)
+    user.reset_token = None
+    user.reset_token_expires_at = None
+    user.updated_at = now
+    db.commit()
+
+    return {"status": "success", "message": "Password updated successfully. You can now sign in."}
+
+
+@router.post("/v1/auth/login", summary="Self-Serve Developer Login with Password or API Key")
 def self_serve_login(
     payload: LoginRequest,
     db: Session = Depends(get_db_session)
@@ -575,8 +749,23 @@ def self_serve_login(
 
     if payload.email:
         clean_email = payload.email.strip().lower()
+        user = db.query(UserAccount).filter(UserAccount.email == clean_email).first()
+        
+        # Verify password if user account exists
+        if user and payload.password:
+            if not verify_password(user.password_hash, payload.password):
+                raise HTTPException(status_code=401, detail="Incorrect email or password.")
+            if not user.is_verified:
+                return {
+                    "status": "unverified",
+                    "email": clean_email,
+                    "message": "Please verify your email address before logging in."
+                }
+        elif user and not payload.password:
+            raise HTTPException(status_code=400, detail="Password is required to log in.")
+
         mem = db.query(Membership).filter(Membership.email.ilike(clean_email)).first()
-        formatted_name = " ".join([part.capitalize() for part in clean_email.split('@')[0].replace('.', ' ').replace('_', ' ').replace('-', ' ').split()]) or "Developer"
+        formatted_name = user.name if (user and user.name) else (" ".join([part.capitalize() for part in clean_email.split('@')[0].replace('.', ' ').replace('_', ' ').replace('-', ' ').split()]) or "Developer")
         if not mem:
             org = db.query(Organization).first()
             if not org:
@@ -598,15 +787,12 @@ def self_serve_login(
             mem = Membership(
                 id=f"mem_{secrets.token_hex(4)}",
                 org_id=org.id,
-                clerk_user_id=f"user_{secrets.token_hex(4)}",
+                clerk_user_id=user.id if user else f"user_{secrets.token_hex(4)}",
                 name=formatted_name,
                 email=clean_email,
                 role="owner"
             )
             db.add(mem)
-            db.commit()
-        elif not mem.name or "alice" in mem.name.lower():
-            mem.name = formatted_name
             db.commit()
 
         user_name = mem.name or formatted_name
@@ -622,11 +808,11 @@ def self_serve_login(
         )
         return {
             "status": "authenticated",
-            "auth_type": "email",
             "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None,
             "project_id": proj.id if proj else None,
+            "role": mem.role,
             "api_key": key_res["api_key"],
-            "user": {"name": user_name, "email": mem.email or clean_email, "role": mem.role}
+            "user": {"name": user_name, "email": clean_email, "role": mem.role}
         }
 
     # Instant Demo Workspace Login

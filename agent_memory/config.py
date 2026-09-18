@@ -63,6 +63,11 @@ class Settings(BaseSettings):
     clerk_publishable_key: str = os.getenv("CLERK_PUBLISHABLE_KEY", "pk_test_mock_clerk_publishable_key")
     rbac_emergency_bypass: bool = os.getenv("RBAC_EMERGENCY_BYPASS", "false").lower() in ("true", "1", "yes")
 
+    # Resend Transactional Email Configuration
+    resend_api_key: str = os.getenv("RESEND_API_KEY", "")
+    resend_from_email: str = os.getenv("RESEND_FROM_EMAIL", "MemoryBrain <onboarding@resend.dev>")
+    app_base_url: str = os.getenv("APP_BASE_URL", "http://localhost:8000")
+
     # Memory Engine Hyperparameters
     decay_rate_lambda: float = 0.005  # Ebbinghaus decay per day
     relevance_threshold: float = 0.40  # Minimum hybrid score

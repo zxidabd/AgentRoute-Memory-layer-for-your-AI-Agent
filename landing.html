@@ -2582,10 +2582,17 @@ hits = mb.assets.recall(
             <input type="email" id="login-email" class="form-input" placeholder="name@company.com" required>
           </div>
           <div class="form-group">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <label style="margin:0;">Password</label>
+              <a href="#" onclick="showForgotPassword(event)" style="font-size:12px; color:var(--color-accent); text-decoration:none;">Forgot password?</a>
+            </div>
+            <input type="password" id="login-password" class="form-input" placeholder="••••••••" style="margin-top:6px;">
+          </div>
+          <div class="form-group">
             <label>Or Sign In with API Key</label>
             <input type="text" id="login-key" class="form-input" placeholder="mb_live_... (optional)">
           </div>
-          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:8px;">
+          <button type="submit" id="btn-submit-login" class="btn btn-primary" style="width:100%; margin-top:8px;">
             Sign In to Console
           </button>
         </form>
@@ -2603,6 +2610,10 @@ hits = mb.assets.recall(
             <input type="email" id="signup-email" class="form-input" placeholder="user@company.com" required>
           </div>
           <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="signup-password" class="form-input" placeholder="Minimum 6 characters" required minlength="6">
+          </div>
+          <div class="form-group">
             <label>Workspace / Company Name</label>
             <input type="text" id="signup-org" class="form-input" placeholder="Acme AI Inc.">
           </div>
@@ -2616,7 +2627,66 @@ hits = mb.assets.recall(
             </select>
           </div>
           <button type="submit" id="btn-submit-signup" class="btn btn-primary" style="width:100%; margin-top:8px;">
-            Create Free Account &amp; Generate API Key
+            Create Account &amp; Send Verification Code
+          </button>
+        </form>
+      </div>
+
+      <!-- Verify Email View -->
+      <div id="auth-verify-view" style="display:none; text-align:center;">
+        <div style="font-size:32px; margin-bottom:8px;">📬</div>
+        <h3 style="font-size:18px; margin-bottom:8px;">Confirm Your Email</h3>
+        <p style="font-size:13px; color:var(--color-text-secondary); margin-bottom:20px; line-height:1.5;">
+          We sent a 6-digit confirmation code via Resend to:<br>
+          <strong id="verify-email-target" style="color:var(--color-text-primary); font-size:14px;"></strong>
+        </p>
+        <form onsubmit="handleVerifyEmail(event)">
+          <div class="form-group">
+            <input type="text" id="verify-otp-code" class="form-input" placeholder="123456" maxlength="6" required style="font-family:'JetBrains Mono',monospace; font-size:24px; text-align:center; letter-spacing:6px; font-weight:700;">
+          </div>
+          <button type="submit" id="btn-submit-verify" class="btn btn-primary" style="width:100%; margin-top:8px;">
+            Verify &amp; Activate Workspace
+          </button>
+        </form>
+        <div style="margin-top:16px; font-size:13px; color:var(--color-text-secondary);">
+          Didn't receive the email? <a href="#" onclick="handleResendOtp(event)" style="color:var(--color-accent); text-decoration:none; font-weight:600;">Resend Code</a>
+        </div>
+      </div>
+
+      <!-- Forgot Password View -->
+      <div id="auth-forgot-view" style="display:none;">
+        <h3 style="font-size:18px; margin-bottom:8px;">Forgot Password</h3>
+        <p style="font-size:13px; color:var(--color-text-secondary); margin-bottom:16px; line-height:1.5;">
+          Enter your registered email and we will send you a secure password reset link via Resend.
+        </p>
+        <form onsubmit="handleForgotPassword(event)">
+          <div class="form-group">
+            <label>Work Email</label>
+            <input type="email" id="forgot-email" class="form-input" placeholder="name@company.com" required>
+          </div>
+          <button type="submit" id="btn-submit-forgot" class="btn btn-primary" style="width:100%; margin-top:8px;">
+            Send Reset Link
+          </button>
+          <button type="button" onclick="switchAuthTab('signin')" class="btn btn-ghost" style="width:100%; margin-top:8px;">
+            &larr; Back to Sign In
+          </button>
+        </form>
+      </div>
+
+      <!-- Reset Password View -->
+      <div id="auth-reset-view" style="display:none;">
+        <h3 style="font-size:18px; margin-bottom:8px;">Set New Password</h3>
+        <p style="font-size:13px; color:var(--color-text-secondary); margin-bottom:16px;">
+          Choose a secure new password for your account.
+        </p>
+        <form onsubmit="handleResetPassword(event)">
+          <input type="hidden" id="reset-token-val">
+          <div class="form-group">
+            <label>New Password</label>
+            <input type="password" id="reset-new-password" class="form-input" placeholder="At least 6 characters" required minlength="6">
+          </div>
+          <button type="submit" id="btn-submit-reset" class="btn btn-primary" style="width:100%; margin-top:8px;">
+            Update Password &amp; Sign In
           </button>
         </form>
       </div>
@@ -2763,6 +2833,9 @@ hits = mb.assets.recall(
       document.getElementById('modal-tab-signin').classList.remove('active');
       document.getElementById('modal-tab-signup').classList.remove('active');
       document.getElementById('auth-success-view').style.display = 'none';
+      document.getElementById('auth-verify-view').style.display = 'none';
+      document.getElementById('auth-forgot-view').style.display = 'none';
+      document.getElementById('auth-reset-view').style.display = 'none';
 
       if (tab === 'signin' || tab === 'login') {
         document.getElementById('modal-tab-signin').classList.add('active');
@@ -2775,19 +2848,97 @@ hits = mb.assets.recall(
       }
     }
 
+    let pendingVerifyEmail = '';
+
+    function showForgotPassword(e) {
+      if (e) e.preventDefault();
+      document.getElementById('modal-tab-signin').classList.remove('active');
+      document.getElementById('modal-tab-signup').classList.remove('active');
+      document.getElementById('auth-signin-view').style.display = 'none';
+      document.getElementById('auth-signup-view').style.display = 'none';
+      document.getElementById('auth-verify-view').style.display = 'none';
+      document.getElementById('auth-reset-view').style.display = 'none';
+      document.getElementById('auth-success-view').style.display = 'none';
+      document.getElementById('auth-forgot-view').style.display = 'block';
+    }
+
+    async function handleForgotPassword(e) {
+      e.preventDefault();
+      const email = document.getElementById('forgot-email').value;
+      const btn = document.getElementById('btn-submit-forgot');
+      btn.innerText = 'Sending Link via Resend...';
+      btn.disabled = true;
+
+      try {
+        const resp = await fetch('/v1/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email })
+        });
+        const data = await resp.json();
+        alert(data.message || 'Password reset instructions dispatched.');
+        switchAuthTab('signin');
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        btn.innerText = 'Send Reset Link';
+        btn.disabled = false;
+      }
+    }
+
+    async function handleResetPassword(e) {
+      e.preventDefault();
+      const token = document.getElementById('reset-token-val').value;
+      const newPassword = document.getElementById('reset-new-password').value;
+      const btn = document.getElementById('btn-submit-reset');
+      btn.innerText = 'Updating...';
+      btn.disabled = true;
+
+      try {
+        const resp = await fetch('/v1/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: token, new_password: newPassword })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          alert('Password reset successfully! Please sign in with your new password.');
+          switchAuthTab('signin');
+        } else {
+          alert('Reset failed: ' + (data.detail || 'Token expired or invalid'));
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        btn.innerText = 'Update Password & Sign In';
+        btn.disabled = false;
+      }
+    }
+
     async function handleLogin(e) {
       e.preventDefault();
       const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
       const apiKey = document.getElementById('login-key').value;
+      const btn = document.getElementById('btn-submit-login');
+      btn.innerText = 'Signing In...';
+      btn.disabled = true;
 
       try {
         const resp = await fetch('/v1/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email || null, api_key: apiKey || null })
+          body: JSON.stringify({ email: email || null, password: password || null, api_key: apiKey || null })
         });
         const data = await resp.json();
         if (resp.ok) {
+          if (data.status === 'unverified') {
+            pendingVerifyEmail = data.email || email;
+            document.getElementById('verify-email-target').innerText = pendingVerifyEmail;
+            document.getElementById('auth-signin-view').style.display = 'none';
+            document.getElementById('auth-verify-view').style.display = 'block';
+            return;
+          }
           localStorage.setItem('mb_api_key', data.api_key || apiKey);
           localStorage.setItem('mb_org_id', data.org ? data.org.id : '');
           if (data.user && data.user.name) {
@@ -2803,8 +2954,10 @@ hits = mb.assets.recall(
           alert('Login failed: ' + (data.detail || 'Invalid credentials'));
         }
       } catch (err) {
-        // Fallback directly to console
         window.location.href = '/dashboard';
+      } finally {
+        btn.innerText = 'Sign In to Console';
+        btn.disabled = false;
       }
     }
 
@@ -2858,11 +3011,12 @@ hits = mb.assets.recall(
     async function handleSignup(e) {
       e.preventDefault();
       const btn = document.getElementById('btn-submit-signup');
-      btn.innerText = 'Provisioning Workspace...';
+      btn.innerText = 'Sending Verification Code...';
       btn.disabled = true;
 
       const name = document.getElementById('signup-name').value;
       const email = document.getElementById('signup-email').value;
+      const password = document.getElementById('signup-password').value;
       const orgName = document.getElementById('signup-org').value;
       const tier = document.getElementById('signup-tier').value;
 
@@ -2873,32 +3027,100 @@ hits = mb.assets.recall(
           body: JSON.stringify({
             name: name,
             email: email,
+            password: password,
             organization_name: orgName || null,
             tier: tier
           })
         });
         const data = await resp.json();
         if (resp.ok) {
-          document.getElementById('auth-signin-view').style.display = 'none';
+          pendingVerifyEmail = email;
+          document.getElementById('verify-email-target').innerText = email;
           document.getElementById('auth-signup-view').style.display = 'none';
-          document.getElementById('auth-success-view').style.display = 'block';
-
-          document.getElementById('created-key-text').innerText = data.api_key;
-          localStorage.setItem('mb_api_key', data.api_key);
-          if (data.org) localStorage.setItem('mb_org_id', data.org.id);
-          localStorage.setItem('mb_user_name', name);
-          localStorage.setItem('mb_user_email', email);
+          document.getElementById('auth-verify-view').style.display = 'block';
+          document.getElementById('verify-otp-code').focus();
         } else {
           alert('Signup failed: ' + (data.detail || 'Please verify your inputs'));
-          btn.innerText = 'Create Free Account & Generate API Key';
-          btn.disabled = false;
         }
       } catch (err) {
         alert('Network error during signup: ' + err.message);
-        btn.innerText = 'Create Free Account & Generate API Key';
+      } finally {
+        btn.innerText = 'Create Account & Send Verification Code';
         btn.disabled = false;
       }
     }
+
+    async function handleVerifyEmail(e) {
+      e.preventDefault();
+      const code = document.getElementById('verify-otp-code').value.trim();
+      const btn = document.getElementById('btn-submit-verify');
+      btn.innerText = 'Verifying Code...';
+      btn.disabled = true;
+
+      try {
+        const resp = await fetch('/v1/auth/verify-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: pendingVerifyEmail, code: code })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          document.getElementById('auth-verify-view').style.display = 'none';
+          document.getElementById('auth-success-view').style.display = 'block';
+
+          if (data.api_key) {
+            document.getElementById('created-key-text').innerText = data.api_key;
+            localStorage.setItem('mb_api_key', data.api_key);
+          }
+          if (data.org) localStorage.setItem('mb_org_id', data.org.id);
+          if (data.user) {
+            localStorage.setItem('mb_user_name', data.user.name);
+            localStorage.setItem('mb_user_email', data.user.email);
+          }
+        } else {
+          alert('Verification failed: ' + (data.detail || 'Invalid or expired code'));
+        }
+      } catch (err) {
+        alert('Verification error: ' + err.message);
+      } finally {
+        btn.innerText = 'Verify & Activate Workspace';
+        btn.disabled = false;
+      }
+    }
+
+    async function handleResendOtp(e) {
+      if (e) e.preventDefault();
+      if (!pendingVerifyEmail) {
+        alert('No email specified.');
+        return;
+      }
+      try {
+        const resp = await fetch('/v1/auth/resend-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: pendingVerifyEmail })
+        });
+        const data = await resp.json();
+        alert(data.message || 'Fresh verification code dispatched via Resend.');
+      } catch (err) {
+        alert('Resend failed: ' + err.message);
+      }
+    }
+
+    // Check for password reset token in URL on load
+    window.addEventListener('load', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const resetToken = urlParams.get('reset_token');
+      if (resetToken) {
+        document.getElementById('auth-modal').style.display = 'flex';
+        document.getElementById('auth-signin-view').style.display = 'none';
+        document.getElementById('auth-signup-view').style.display = 'none';
+        document.getElementById('auth-verify-view').style.display = 'none';
+        document.getElementById('auth-forgot-view').style.display = 'none';
+        document.getElementById('auth-reset-view').style.display = 'block';
+        document.getElementById('reset-token-val').value = resetToken;
+      }
+    });
 
     function copyKey() {
       const key = document.getElementById('created-key-text').innerText;

@@ -77,9 +77,27 @@ class Project(Base):
     )
 
 
+class UserAccount(Base):
+    """Native developer user account with email confirmation & password authentication."""
+    __tablename__ = "user_accounts"
+
+    id = Column(String(64), primary_key=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    name = Column(String(255), nullable=True)
+    is_verified = Column(Boolean, default=False)
+    verification_code = Column(String(32), nullable=True)
+    verification_code_expires_at = Column(DateTime(timezone=True), nullable=True)
+    reset_token = Column(String(128), nullable=True, index=True)
+    reset_token_expires_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
 class Membership(Base):
     """Users & membership/roles within an organization."""
     __tablename__ = "memberships"
+
 
     id = Column(String(64), primary_key=True)
     org_id = Column(String(64), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
