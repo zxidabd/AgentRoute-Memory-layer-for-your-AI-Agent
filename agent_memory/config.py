@@ -68,6 +68,10 @@ class Settings(BaseSettings):
     resend_from_email: str = os.getenv("RESEND_FROM_EMAIL", "MemoryBrain <onboarding@resend.dev>")
     app_base_url: str = os.getenv("APP_BASE_URL", "http://localhost:8000")
 
+    # Google OAuth / Identity Services
+    google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    google_client_secret: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
+
     # Memory Engine Hyperparameters
     decay_rate_lambda: float = 0.005  # Ebbinghaus decay per day
     relevance_threshold: float = 0.40  # Minimum hybrid score
