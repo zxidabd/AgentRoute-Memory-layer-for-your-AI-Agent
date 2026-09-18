@@ -1,0 +1,84 @@
+---
+title: "Claude & Model Context Protocol (MCP)"
+description: "Give Anthropic Claude permanent long-term memory via the Messages API and Claude Desktop MCP."
+---
+
+## Option 1: Claude Desktop & Cursor (Zero Code via MCP)
+
+You can connect Claude Desktop, Cursor, and Windsurf directly to MemoryBrain using the **Model Context Protocol (MCP)**. Claude will automatically query memory before speaking and save new facts as you talk.
+
+### Configuration
+
+Add this block to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "memorybrain": {
+      "command": "python",
+      "args": ["-m", "agent_memory.mcp.cli"],
+      "env": {
+        "MEMORYBRAIN_API_KEY": "mb_live_your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+### Remote SSE Transport Connection
+
+For clients that connect via remote SSE URLs (e.g. Cursor or cloud agents):
+
+```text
+https://api.memorybrain.ai/mcp/sse?api_key=mb_live_your_api_key_here
+```
+
+Claude will automatically gain access to 4 native tools:
+1. `recall_memories` — Automatically searches long-term memory for relevant past context.
+2. `save_memory` — Saves new facts, decisions, and instructions.
+3. `get_user_profile` — Assembles the complete knowledge profile.
+4. `forget_memory` — GDPR memory wipes.
+
+---
+
+## Option 2: Anthropic Claude Messages API (Python)
+
+If building a custom agent backend using Anthropic's Python SDK:
+
+```python
+import os
+import anthropic
+from memorybrain import MemoryBrain
+
+claude = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+mb = MemoryBrain(api_key=os.environ["MEMORYBRAIN_API_KEY"])
+
+def chat_with_claude(user_id: str, message: str) -> str:
+    # 1. Recall relevant user memories
+    memory_res = mb.recall(user_id=user_id, query=message, limit=5)
+    context_str = memory_res.get("context", "")
+
+    # 2. System prompt with injected memory context
+    system_prompt = (
+        "You are Claude, a helpful AI assistant. "
+        "Use the user's permanent memory context below to provide personalized responses:\n\n"
+        f"### Memory Context:\n{context_str}"
+    )
+
+    # 3. Call Claude 3.5 Sonnet
+    response = claude.messages.create(
+        model="claude-3-5-sonnet-20241022",
+        max_tokens=1024,
+        system=system_prompt,
+        messages=[{"role": "user", "content": message}]
+    )
+    answer = response.content[0].text
+
+    # 4. Asynchronously commit the turn to MemoryBrain
+    mb.store(user_id=user_id, messages=[
+        {"role": "user", "content": message},
+        {"role": "assistant", "content": answer}
+    ])
+
+    return answer
+```

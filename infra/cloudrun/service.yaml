@@ -1,0 +1,82 @@
+﻿apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: memorybrain-api
+  labels:
+    cloud.googleapis.com/location: us-central1
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/launch-stage: GA
+spec:
+  template:
+    metadata:
+      annotations:
+        # Minimum 2 instances for high availability across availability zones
+        autoscaling.knative.dev/minScale: 2
+        # Maximum 50 instances for high peak traffic absorption
+        autoscaling.knative.dev/maxScale: 50
+        # Concurrency-based scaling: 80 concurrent requests per container before autoscaling
+        autoscaling.knative.dev/target: 80
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/cpu-throttling: false
+        run.googleapis.com/vpc-access-connector: projects/memorybrain-prod/locations/us-central1/connectors/mb-vpc-conn
+        run.googleapis.com/vpc-access-egress: all-traffic
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      serviceAccountName: memorybrain-cloudrun-sa@memorybrain-prod.iam.gserviceaccount.com
+      containers:
+      - image: gcr.io/memorybrain-prod/memorybrain-api:latest
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+        ports:
+        - name: http1
+          containerPort: 8000
+        env:
+        - name: ENVIRONMENT
+          value: production
+        - name: PORT
+          value: 8000
+        - name: HOST
+          value: 0.0.0.0
+        - name: DATABASE_POOL_SIZE
+          value: 20
+        - name: DATABASE_MAX_OVERFLOW
+          value: 10
+        - name: DATABASE_TIMEOUT_SECONDS
+          value: 5
+        # Secret Manager bindings
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: memorybrain-primary-db-url
+              key: latest
+        - name: READ_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: memorybrain-read-replica-db-url
+              key: latest
+        - name: MEMORY_ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: memorybrain-aes256-master-key
+              key: latest
+        # Startup Probe delays traffic until SQLite/Postgres schemas and models ready
+        startupProbe:
+          httpGet:
+            path: /healthz/startup
+            port: 8000
+          initialDelaySeconds: 2
+          periodSeconds: 3
+          failureThreshold: 10
+          timeoutSeconds: 3
+        # Liveness Probe monitors active DB roundtrip
+        livenessProbe:
+          httpGet:
+            path: /healthz/liveness
+            port: 8000
+          periodSeconds: 10
+          failureThreshold: 3
+          timeoutSeconds: 3

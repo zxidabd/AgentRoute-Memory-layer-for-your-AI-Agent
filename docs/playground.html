@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MemoryBrain — Interactive Developer Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-bg: #FFFFFF;
+      --color-bg-muted: #F8F9FA;
+      --color-text-primary: #111111;
+      --color-text-secondary: #6B7280;
+      --color-border: #E5E7EB;
+      --color-border-strong: #D1D5DB;
+      --color-accent: #635BFF;
+      --color-accent-hover: #5147E5;
+      --color-accent-light: #F0EFFF;
+      --color-accent-text: #5147E5;
+      --color-warning: #D97706;
+      --color-code-bg: #111827;
+      --color-code-text: #F9FAFB;
+      --color-code-border: #1F2937;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      background-color: var(--color-bg-muted);
+      color: var(--color-text-primary);
+      font-family: 'Inter', sans-serif;
+      padding: 2rem;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    .header {
+      max-width: 1200px;
+      margin: 0 auto 3rem auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .logo-badge-mb {
+      background-color: var(--color-accent);
+      color: #FFFFFF;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: -0.02em;
+    }
+    
+    .logo-text {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--color-text-primary);
+    }
+    
+    .logo-badge-playground {
+      background-color: var(--color-accent-light);
+      color: var(--color-accent-text);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    
+    .nav-links {
+      display: flex;
+      gap: 24px;
+    }
+    
+    .nav-links a {
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    
+    .nav-links a:hover {
+      color: var(--color-text-primary);
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+    
+    @media (max-width: 900px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .card {
+      background-color: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+    }
+    
+    .badge {
+      background-color: var(--color-accent-light);
+      color: var(--color-accent-text);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      margin-bottom: 8px;
+    }
+    
+    input, textarea {
+      width: 100%;
+      background-color: var(--color-bg);
+      border: 1px solid var(--color-border-strong);
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: var(--color-text-primary);
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px var(--color-accent-light);
+    }
+    
+    button {
+      background-color: var(--color-accent);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      width: 100%;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      height: 44px;
+    }
+    
+    button:hover {
+      background-color: var(--color-accent-hover);
+    }
+    
+    .output-area {
+      margin-top: 16px;
+      background-color: var(--color-code-bg);
+      border: 1px solid var(--color-code-border);
+      border-radius: 6px;
+      padding: 16px;
+      color: var(--color-code-text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      min-height: 120px;
+      max-height: 250px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+    
+    .latency-tag {
+      color: var(--color-warning);
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 12px;
+      display: block;
+    }
+    
+    .code-preview {
+      grid-column: 1 / -1;
+      background-color: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      margin-top: 0;
+    }
+    
+    pre {
+      background-color: var(--color-code-bg);
+      border: 1px solid var(--color-code-border);
+      border-radius: 6px;
+      padding: 20px;
+      overflow-x: auto;
+      color: var(--color-code-text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="logo-container">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#635BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"/>
+        <path d="M9 21h6"/>
+        <path d="M10 21v1a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-1"/>
+        <path d="M12 7v5"/>
+        <path d="M9.5 10h5"/>
+      </svg>
+      <div class="logo-text">MemoryBrain</div>
+      <div class="logo-badge-playground">Playground</div>
+    </div>
+    <nav class="nav-links">
+      <a href="/docs" target="_blank">Documentation</a>
+      <a href="https://github.com/memorybrain" target="_blank">GitHub</a>
+      <a href="/dashboard">Console</a>
+      <div id="user-badge" style="display: inline-flex; align-items: center; gap: 8px; margin-left: 12px; font-size: 13px; font-weight: 500;">
+        <span id="playground-avatar" style="width: 26px; height: 26px; border-radius: 50%; background: var(--color-accent); color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">D</span>
+        <span id="playground-user-name">Developer</span>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container">
+    <!-- Panel 1: Configuration & Store -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">1. Store Agent Memory</h2>
+        <span class="badge">POST /v1/memories</span>
+      </div>
+      <div class="form-group">
+        <label for="apiUrl">API Base URL</label>
+        <input type="text" id="apiUrl" value="http://localhost:8000">
+      </div>
+      <div class="form-group">
+        <label for="apiKey">API Key (or leave blank for local dev sandbox)</label>
+        <input type="password" id="apiKey" placeholder="mb_live_...">
+      </div>
+      <div class="form-group">
+        <label for="userId">User Identifier</label>
+        <input type="text" id="userId" value="user_dev_491">
+      </div>
+      <div class="form-group">
+        <label for="memoryContent">Memory Observation / Preference</label>
+        <textarea id="memoryContent" rows="3">User prefers async Python with FastAPI, deploys to Google Cloud Run, and uses pgvector.</textarea>
+      </div>
+      <button onclick="storeMemory()">Store Memory Payload</button>
+      <div id="storeOutput" class="output-area">// Store response will appear here...</div>
+    </div>
+
+    <!-- Panel 2: Recall & Context Generation -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">2. Recall Semantic Context</h2>
+        <span class="badge">POST /v1/context</span>
+      </div>
+      <div class="form-group">
+        <label for="recallUserId">User Identifier</label>
+        <input type="text" id="recallUserId" value="user_dev_491">
+      </div>
+      <div class="form-group">
+        <label for="recallQuery">Agent Query / Current User Prompt</label>
+        <textarea id="recallQuery" rows="3">What framework and cloud region does this user deploy their services to?</textarea>
+      </div>
+      <button onclick="recallMemory()">Recall Context (&lt;25ms)</button>
+      <div id="recallOutput" class="output-area">// Recalled memory context will appear here...</div>
+      <span id="latencyTag" class="latency-tag"></span>
+    </div>
+
+    <!-- Panel 3: Live Code Generator -->
+    <div class="code-preview">
+      <div class="card-header">
+        <h2 class="card-title">Generated SDK Execution (2 Lines of Code)</h2>
+        <span class="badge">Python / TypeScript</span>
+      </div>
+      <pre><code id="codeSnippet"># 1. Install official SDK
+# pip install memorybrain
+
+from memorybrain import MemoryBrain
+
+mb = MemoryBrain(api_key="mb_live_...")
+
+# Store memory
+mb.store(user_id="user_dev_491", content="User prefers async Python with FastAPI, deploys to Google Cloud Run.")
+
+# Sub-25ms Recall
+ctx = mb.recall(user_id="user_dev_491", query="What framework and cloud region does this user deploy to?")
+print(ctx["context"])
+</code></pre>
+    </div>
+  </main>
+
+  <script>
+    async function storeMemory() {
+      const baseUrl = document.getElementById('apiUrl').value.replace(/\/$/, '');
+      const apiKey = document.getElementById('apiKey').value;
+      const userId = document.getElementById('userId').value;
+      const content = document.getElementById('memoryContent').value;
+      const out = document.getElementById('storeOutput');
+
+      out.textContent = "Storing memory...";
+      const headers = { 'Content-Type': 'application/json' };
+      if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+      try {
+        const res = await fetch(`${baseUrl}/v1/memories?sync=true`, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({ 
+            user_id: userId, 
+            messages: [{ role: 'user', content: content }] 
+          })
+        });
+        const data = await res.json();
+        out.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        out.textContent = `Error connecting to ${baseUrl}: ${err.message}\n(Make sure local MemoryBrain server is running on port 8000)`;
+      }
+    }
+
+    async function recallMemory() {
+      const baseUrl = document.getElementById('apiUrl').value.replace(/\/$/, '');
+      const apiKey = document.getElementById('apiKey').value;
+      const userId = document.getElementById('recallUserId').value;
+      const query = document.getElementById('recallQuery').value;
+      const out = document.getElementById('recallOutput');
+      const tag = document.getElementById('latencyTag');
+
+      out.textContent = "Recalling context...";
+      tag.textContent = "";
+      const headers = { 'Content-Type': 'application/json' };
+      if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+      const t0 = performance.now();
+      try {
+        const res = await fetch(`${baseUrl}/v1/context`, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({ user_id: userId, query: query })
+        });
+        const t1 = performance.now();
+        const data = await res.json();
+        const latency = (t1 - t0).toFixed(1);
+        out.textContent = JSON.stringify(data, null, 2);
+        tag.textContent = `⚡ Server round-trip latency: ${latency} ms`;
+      } catch (err) {
+        out.textContent = `Error connecting to ${baseUrl}: ${err.message}`;
+      }
+    }
+
+    // Dynamic Profile & Key Injection
+    function initPlaygroundUser() {
+      const userName = localStorage.getItem('mb_user_name') || 'Developer';
+      const apiKey = localStorage.getItem('mb_api_key') || '';
+      const userInitial = userName.trim().charAt(0).toUpperCase() || 'D';
+      const userSlug = 'user_' + userName.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
+
+      const nameEl = document.getElementById('playground-user-name');
+      if (nameEl) nameEl.innerText = userName;
+
+      const avatarEl = document.getElementById('playground-avatar');
+      if (avatarEl) avatarEl.innerText = userInitial;
+
+      const userInputs = ['userId', 'recallUserId'];
+      userInputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && (!el.value || el.value.includes('alice') || el.value.startsWith('user_'))) {
+          el.value = userSlug;
+        }
+      });
+
+      if (apiKey) {
+        const keyInput = document.getElementById('apiKey');
+        if (keyInput && !keyInput.value) keyInput.value = apiKey;
+      }
+
+      // Update Live Code Preview
+      const codeSnippet = document.getElementById('codeSnippet');
+      if (codeSnippet) {
+        codeSnippet.textContent = `# 1. Install official SDK\n# pip install memorybrain\n\nfrom memorybrain import MemoryBrain\n\nmb = MemoryBrain(api_key="${apiKey ? apiKey.substring(0, 12) + '...' : 'mb_live_...'}")\n\n# Store memory\nmb.store(user_id="${userSlug}", content="User prefers async Python with FastAPI, deploys to Google Cloud Run.")\n\n# Sub-25ms Recall\nctx = mb.recall(user_id="${userSlug}", query="What framework and cloud region does this user deploy to?")\nprint(ctx["context"])\n`;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', initPlaygroundUser);
+    if (document.readyState !== 'loading') {
+      initPlaygroundUser();
+    }
+  </script>
+</body>
+</html>

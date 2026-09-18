@@ -1,0 +1,104 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "MemoryBrain",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#6366F1",
+    "light": "#818CF8",
+    "dark": "#4F46E5",
+    "background": {
+      "dark": "#0B0F19",
+      "light": "#FFFFFF"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "Dashboard",
+      "url": "https://memorybrain.ai/dashboard"
+    },
+    {
+      "name": "Status",
+      "url": "https://status.memorybrain.ai"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Get API Key",
+    "url": "https://memorybrain.ai/dashboard"
+  },
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "quickstart",
+        "concepts/architecture"
+      ]
+    },
+    {
+      "group": "Framework Guides",
+      "pages": [
+        "guides/openai-assistants",
+        "guides/langchain",
+        "guides/claude"
+      ]
+    },
+    {
+      "group": "SDKs",
+      "pages": [
+        "sdks/python",
+        "sdks/typescript"
+      ]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "api-reference/overview"
+      ]
+    },
+    {
+      "group": "Trust & Security",
+      "pages": [
+        "trust/soc2-overview",
+        "trust/security-whitepaper",
+        "trust/dpa-template",
+        "trust/subprocessors",
+        "trust/incident-response-plan",
+        "trust/vendor-management-policy",
+        "trust/employee-offboarding-checklist",
+        "trust/data-retention-policy",
+        "trust/uptime-sla-runbook",
+        "trust/database-failover-drill"
+      ]
+    },
+    {
+      "group": "Operations & SRE",
+      "pages": [
+        "ops/operations-handbook",
+        "ops/support-operations-handbook",
+        "ops/sales-pipeline-playbook",
+        "ops/finance-and-rev-rec",
+        "ops/product-roadmap",
+        "ops/security-continuous-monitoring",
+        "ops/infra-scaling-playbook"
+      ]
+    },
+    {
+      "group": "Deployment & Infrastructure",
+      "pages": [
+        "deployment/self-hosted",
+        "deployment/gcp-primary",
+        "deployment/aws-parity"
+      ]
+    }
+  ],
+  "api": {
+    "baseUrl": "https://api.memorybrain.ai",
+    "auth": {
+      "method": "bearer"
+    },
+    "openapi": "openapi.yaml"
+  }
+}

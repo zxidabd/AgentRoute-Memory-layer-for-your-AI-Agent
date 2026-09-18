@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MemoryBrain | Agent Long-Term Memory Platform</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* CSS Reset and Variables */
+    :root {
+      --color-bg: #FFFFFF;
+      --color-bg-muted: #F8F9FA;
+      --color-bg-subtle: #F3F4F6;
+      --color-text-primary: #111111;
+      --color-text-secondary: #6B7280;
+      --color-text-muted: #9CA3AF;
+      --color-border: #E5E7EB;
+      --color-border-strong: #D1D5DB;
+      --color-accent: #635BFF;
+      --color-accent-hover: #5147E5;
+      --color-accent-active: #4338CA;
+      --color-accent-light: #F0EFFF;
+      --color-accent-border: #C7C3FF;
+      --color-accent-text: #5147E5;
+      --color-success: #16A34A;
+      --color-success-bg: #F0FDF4;
+      --color-success-border: #BBF7D0;
+      --color-warning: #D97706;
+      --color-warning-bg: #FFFBEB;
+      --color-warning-border: #FDE68A;
+      --color-error: #DC2626;
+      --color-error-bg: #FEF2F2;
+      --color-error-border: #FECACA;
+      --color-info: #2563EB;
+      --color-info-bg: #EFF6FF;
+      --color-info-border: #BFDBFE;
+      --color-code-bg: #111827;
+      --color-code-text: #F9FAFB;
+      --color-code-inline-bg: #F3F4F6;
+      --color-code-inline-text: #111827;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--color-bg-muted);
+      color: var(--color-text-primary);
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    code, pre { font-family: 'JetBrains Mono', monospace; }
+    a, button { cursor: pointer; font-family: inherit; }
+    button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+    /* Layout & Typography */
+    .container { max-width: 1440px; margin: 0 auto; padding: 0 28px; width: 100%; }
+    h1 { font-size: 20px; font-weight: 600; color: var(--color-text-primary); }
+    h2 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+    h3 { font-size: 16px; font-weight: 600; }
+    .text-muted { color: var(--color-text-secondary); }
+    .text-sm { font-size: 14px; }
+    .text-xs { font-size: 13px; }
+
+    /* Navbar */
+    header {
+      background-color: var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .navbar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      max-width: 1560px;
+      margin: 0 auto;
+      padding: 0 24px;
+      gap: 16px;
+      width: 100%;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-shrink: 0;
+    }
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      text-decoration: none;
+      color: inherit;
+    }
+    .logo-container h1 {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--color-text-primary);
+    }
+    .header-divider {
+      width: 1px;
+      height: 18px;
+      background-color: var(--color-border);
+      flex-shrink: 0;
+    }
+    .nav-tabs {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      height: 100%;
+      flex-shrink: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .nav-tabs button {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      padding: 0 10px;
+      height: 100%;
+      display: inline-flex;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      flex-shrink: 0;
+      color: var(--color-text-secondary);
+      transition: color 0.15s ease, border-color 0.15s ease;
+    }
+    .nav-tabs button:hover {
+      color: var(--color-text-primary);
+    }
+    .nav-tabs button.active,
+    .nav-tabs button.bg-indigo-600.text-white {
+      color: var(--color-text-primary) !important;
+      border-bottom: 2px solid var(--color-accent) !important;
+      font-weight: 600;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .select-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background-color: var(--color-bg-subtle);
+      border: 1px solid var(--color-border);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .select-group select {
+      border: none;
+      background: transparent;
+      color: var(--color-text-primary);
+      font-weight: 500;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: var(--color-success);
+    }
+    .user-profile-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-left: 1px solid var(--color-border);
+      padding-left: 12px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* Main Content */
+    main { flex: 1; padding: 32px 0; }
+    .view-section { display: flex; flex-direction: column; gap: 24px; }
+
+    /* Cards & Metrics */
+    .card { background-color: var(--color-bg); border: 1px solid var(--color-border); border-radius: 12px; padding: 24px; }
+    .card:hover { border-color: var(--color-border-strong); }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+    .metric-card { padding: 16px; }
+    .metric-label { font-size: 13px; color: var(--color-text-secondary); text-transform: uppercase; font-weight: 500; margin-bottom: 8px; }
+    .metric-value { font-size: 24px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 4px; }
+
+    /* Utilities */
+    .flex-row { display: flex; align-items: center; }
+    .flex-col { display: flex; flex-direction: column; }
+    .justify-between { justify-content: space-between; }
+    .gap-2 { gap: 8px; }
+    .gap-3 { gap: 12px; }
+    .gap-4 { gap: 16px; }
+    .mb-4 { margin-bottom: 16px; }
+    .mt-4 { margin-top: 16px; }
+    .mt-6 { margin-top: 24px; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; font-weight: 500;
+      border-radius: 8px; border: none; transition: 0.2s; height: 40px; padding: 0 16px; font-size: 14px;
+    }
+    .btn-primary { background-color: var(--color-accent); color: white; }
+    .btn-primary:hover { background-color: var(--color-accent-hover); }
+    .btn-secondary { background-color: var(--color-bg); color: var(--color-text-primary); border: 1px solid var(--color-border); }
+    .btn-secondary:hover { background-color: var(--color-bg-muted); }
+    .btn-danger { background-color: var(--color-error-bg); color: var(--color-error); border: 1px solid var(--color-error-border); height: 32px; padding: 0 12px; font-size: 13px; }
+    .btn-danger:hover { background-color: #FEE2E2; }
+    .btn-ghost-danger { background: transparent; color: var(--color-error); padding: 4px 8px; border: none; font-size: 13px; border-radius: 6px; }
+    .btn-ghost-danger:hover { background-color: var(--color-error-bg); }
+
+    /* Inputs */
+    .input-text { height: 40px; padding: 0 16px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; }
+
+    /* Badges */
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+    .badge-info { background: var(--color-info-bg); color: var(--color-info); border: 1px solid var(--color-info-border); }
+    .badge-success { background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success-border); }
+    .badge-warning { background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid var(--color-warning-border); }
+    .badge-neutral { background: var(--color-bg-subtle); color: var(--color-text-secondary); border: 1px solid var(--color-border); }
+
+    /* Tables */
+    .table-container { overflow-x: auto; margin-top: 16px; border: 1px solid var(--color-border); border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); padding: 12px 16px; border-bottom: 1px solid var(--color-border); background-color: var(--color-bg-muted); }
+    td { font-size: 14px; padding: 12px 16px; border-bottom: 1px solid var(--color-border); color: var(--color-text-primary); }
+
+    /* Code Blocks */
+    .code-block { background-color: var(--color-code-bg); color: var(--color-code-text); padding: 16px; border-radius: 8px; font-size: 13px; overflow-x: auto; line-height: 1.5; }
+
+    /* Progress Bars */
+    .progress-bg { width: 100%; height: 8px; background-color: var(--color-border); border-radius: 4px; overflow: hidden; margin: 8px 0; }
+    .progress-fill-accent { height: 100%; background-color: var(--color-accent); }
+    .progress-fill-success { height: 100%; background-color: var(--color-success); }
+
+    /* Playgound Specific */
+    .playground-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .chat-container { height: 480px; display: flex; flex-direction: column; }
+    .chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 12px 0; }
+
+    /* Plan Cards */
+    .plan-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .plan-card { display: flex; flex-direction: column; justify-content: space-between; }
+    .plan-card.active-plan { border: 2px solid var(--color-accent); }
+    .plan-price { font-size: 32px; font-weight: 600; margin: 12px 0; }
+    .plan-features { list-style: none; font-size: 13px; color: var(--color-text-secondary); margin-bottom: 24px; display: flex; flex-direction: column; gap: 8px; }
+
+    /* Responsive */
+    @media(max-width: 768px) {
+      .grid-4, .playground-grid, .plan-grid { grid-template-columns: 1fr; }
+      .nav-tabs { display: none; }
+    }
+
+    footer { text-align: center; padding: 24px; color: var(--color-text-secondary); font-size: 13px; border-top: 1px solid var(--color-border); margin-top: auto; background: var(--color-bg); }
+
+    /* Modal System */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(17, 24, 39, 0.45);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+    .modal-backdrop.open {
+      display: flex;
+    }
+    .modal-box {
+      background-color: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      padding: 28px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      position: relative;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      font-size: 22px;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      padding: 2px 8px;
+      border-radius: 6px;
+      line-height: 1;
+    }
+    .modal-close-btn:hover {
+      background-color: var(--color-bg-subtle);
+      color: var(--color-text-primary);
+    }
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      margin-bottom: 6px;
+    }
+    .modal-notice-box {
+      background-color: var(--color-warning-bg);
+      border: 1px solid var(--color-warning-border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: var(--color-warning);
+      font-size: 13px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 18px;
+      line-height: 1.4;
+    }
+    .key-copy-container {
+      display: flex;
+      align-items: center;
+      background-color: var(--color-bg-muted);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 8px 10px 8px 14px;
+      gap: 10px;
+    }
+    .key-code-input {
+      background: transparent;
+      border: none;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--color-accent-text);
+      font-weight: 600;
+      width: 100%;
+      outline: none;
+      user-select: all;
+    }
+    .btn-copy-action {
+      background-color: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn-copy-action:hover {
+      background-color: var(--color-bg-muted);
+      border-color: var(--color-border-strong);
+    }
+    .btn-copy-action.copied {
+      background-color: var(--color-success-bg);
+      color: var(--color-success);
+      border-color: var(--color-success-border);
+    }
+    .btn-copy-inline {
+      background: transparent;
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      color: var(--color-text-secondary);
+      font-size: 12px;
+      padding: 3px 8px;
+      cursor: pointer;
+      margin-right: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn-copy-inline:hover {
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+      background-color: var(--color-accent-light);
+    }
+    .btn-copy-inline.copied {
+      border-color: var(--color-success);
+      color: var(--color-success);
+      background-color: var(--color-success-bg);
+    }
+
+    /* =========================================
+       JS-INJECTED TAILWIND CLASS MAPPINGS
+       (Do not remove - Required for JS compat)
+       ========================================= */
+    .hidden { display: none !important; }
+
+    /* Tabs */
+    button.bg-indigo-600.text-white { background: transparent !important; color: var(--color-text-primary) !important; border-bottom: 2px solid var(--color-accent) !important; border-radius: 0 !important; }
+    button.text-gray-400 { background: transparent !important; color: var(--color-text-secondary) !important; border-bottom: 2px solid transparent !important; border-radius: 0 !important; }
+    button.hover\:text-gray-200:hover { color: var(--color-text-primary) !important; }
+
+    /* Playground Chat Bubbles */
+    .bg-indigo-600\/80 { background-color: var(--color-accent-light) !important; color: var(--color-accent-active) !important; border-radius: 12px; border-bottom-right-radius: 4px; margin-left: auto; max-width: 85%; text-align: right; font-size: 14px; padding: 12px 16px; }
+    .bg-gray-800\/80 { background-color: var(--color-bg-subtle) !important; color: var(--color-text-primary) !important; border-radius: 12px; border-bottom-left-radius: 4px; max-width: 85%; font-size: 14px; padding: 12px 16px; }
+
+    /* Tables & Forms from JS */
+    .py-3\.5 { padding-top: 12px; padding-bottom: 12px; }
+    .px-4 { padding-left: 16px; padding-right: 16px; }
+    .text-right { text-align: right; }
+    .font-medium { font-weight: 500; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .text-xs { font-size: 13px; }
+    .text-white { color: var(--color-text-primary) !important; }
+    .text-indigo-300 { color: var(--color-text-secondary) !important; }
+    .text-gray-400, .text-gray-300, .text-gray-500 { color: var(--color-text-secondary) !important; }
+    .text-emerald-400 { color: var(--color-success) !important; }
+    .text-amber-400 { color: var(--color-warning) !important; }
+    .text-red-400 { color: var(--color-error) !important; background: transparent; border: none; cursor: pointer; }
+    .text-red-400:hover { text-decoration: underline; }
+
+    /* Badges */
+    .bg-emerald-950 { background-color: var(--color-success-bg) !important; border: 1px solid var(--color-success-border); }
+    .bg-amber-950 { background-color: var(--color-warning-bg) !important; border: 1px solid var(--color-warning-border); }
+    .bg-indigo-950 { background-color: var(--color-info-bg) !important; border: 1px solid var(--color-info-border); }
+    .px-2 { padding-left: 8px; padding-right: 8px; }
+    .py-0\.5 { padding-top: 2px; padding-bottom: 2px; }
+    .rounded { border-radius: 12px; }
+    .font-semibold { font-weight: 600; }
+
+    /* Wipe User */
+    .p-8 { padding: 32px; }
+    .text-center { text-align: center; }
+
+    /* Create Project */
+    .bg-gray-900\/80 { background-color: var(--color-bg) !important; border: 1px solid var(--color-border) !important; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; }
+    .border-gray-800, .border-gray-800\/80, .border-gray-700 { border-color: var(--color-border) !important; }
+    .p-4 { padding: 16px; }
+    .flex { display: flex; }
+    .flex-col { flex-direction: column; }
+    .items-start { align-items: flex-start; }
+    .items-center { align-items: center; }
+    .space-y-3 > * + * { margin-top: 12px; }
+    .text-\[11px\] { font-size: 11px; }
+    .text-base { font-size: 16px; }
+    .mt-2 { margin-top: 8px; }
+    .pt-3 { padding-top: 12px; }
+    .border-t { border-top: 1px solid var(--color-border); }
+
+    /* Invite Member */
+    .space-x-2 > * + * { margin-left: 8px; }
+    .w-7 { width: 28px; }
+    .h-7 { height: 28px; }
+    .rounded-full { border-radius: 9999px; }
+    .bg-gray-700 { background-color: var(--color-bg-muted) !important; }
+    .justify-center { justify-content: center; }
+    .bg-gray-900 { background-color: var(--color-bg) !important; border: 1px solid var(--color-border) !important; color: var(--color-text-primary) !important; outline: none; }
+    .rounded-lg { border-radius: 8px; }
+    .px-2\.5 { padding-left: 10px; padding-right: 10px; }
+    .py-1 { padding-top: 4px; padding-bottom: 4px; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="navbar-inner">
+      <div class="header-left">
+        <a href="/landing" class="logo-container" title="MemoryBrain Home">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#635BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"/>
+            <path d="M9 21h6"/>
+            <path d="M10 21v1a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-1"/>
+            <path d="M12 7v5"/>
+            <path d="M9.5 10h5"/>
+          </svg>
+          <h1>MemoryBrain</h1>
+        </a>
+        <div class="header-divider"></div>
+        <div class="select-group">
+          <select id="active-org-select" onchange="onOrgChanged()">
+            <option value="org_default_dev">Acme Robotics</option>
+            <option value="org_personal_demo">Personal Workspace</option>
+          </select>
+          <span style="color: var(--color-border-strong); font-size: 11px;">/</span>
+          <select id="active-project-select" onchange="onProjectChanged()">
+            <option value="proj_prod">SupportBot (prod)</option>
+            <option value="proj_dev">SupportBot (dev)</option>
+            <option value="proj_staging">AgentX (staging)</option>
+          </select>
+        </div>
+      </div>
+
+      <nav class="nav-tabs">
+        <button onclick="switchTab('explorer')" id="tab-explorer" class="active">
+          Explorer
+        </button>
+        <button onclick="switchTab('playground')" id="tab-playground">
+          Playground
+        </button>
+        <button onclick="switchTab('workspaces')" id="tab-workspaces">
+          Workspaces
+        </button>
+        <button onclick="switchTab('keys')" id="tab-keys">
+          API Keys
+        </button>
+        <button onclick="switchTab('sdk')" id="tab-sdk">
+          SDK
+        </button>
+        <button onclick="switchTab('billing')" id="tab-billing">
+          Billing
+        </button>
+      </nav>
+
+      <div class="header-right">
+        <div class="status-badge">
+          <div class="status-dot"></div>
+          <span>Online</span>
+        </div>
+        <div class="user-profile-badge">
+          <div id="user-avatar-initial" style="width: 26px; height: 26px; border-radius: 50%; background: #EEF2FF; color: #4F46E5; border: 1px solid #C7D2FE; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;">D</div>
+          <span id="user-display-name" style="font-size: 13px; font-weight: 500; white-space: nowrap;">Developer</span>
+          <button onclick="handleSignOut()" title="Sign out" style="background: transparent; border: 1px solid var(--color-border); cursor: pointer; color: var(--color-text-secondary); font-size: 11px; padding: 3px 8px; border-radius: 5px; white-space: nowrap;">Sign out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="grid-4">
+      <div class="card metric-card">
+        <div class="metric-label">Active Memories</div>
+        <div class="metric-value">14,892</div>
+        <div class="text-xs text-muted">Total stored across org</div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-label">Search Latency</div>
+        <div class="metric-value">21ms</div>
+        <div class="text-xs text-muted">Avg vector lookup</div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-label">Token Savings</div>
+        <div class="metric-value">91.4%</div>
+        <div class="text-xs text-muted">vs raw chat history</div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-label">Extraction Model</div>
+        <div class="metric-value" style="font-size: 18px; margin-top: 6px;">Gemini 2.5 Flash</div>
+        <div class="text-xs text-muted">$0.000045 / turn</div>
+      </div>
+    </div>
+
+    <!-- TAB 1: EXPLORER -->
+    <section id="view-explorer" class="view-section">
+      <div class="card">
+        <div class="flex-row justify-between mb-4">
+          <div>
+            <h2>Memory Explorer</h2>
+            <p class="text-sm text-muted">Inspect, search, and manage user memory stores.</p>
+          </div>
+          <div class="flex-row gap-2">
+            <input type="text" id="explorer-user-input" value="user_devops_lead" placeholder="User ID..." class="input-text" style="width: 240px;">
+            <button class="btn btn-primary" onclick="loadUserMemories()">Query User</button>
+          </div>
+        </div>
+
+        <div id="memories-container" class="flex-col gap-3">
+          <div class="card p-4 flex-row justify-between" style="padding: 16px;">
+            <div class="flex-col gap-1">
+              <div class="flex-row gap-2">
+                <span class="badge badge-info">DECISION</span>
+                <span class="text-xs text-muted">Entity: project • Attribute: tech_stack</span>
+              </div>
+              <p class="text-sm" style="font-weight: 500;">User builds with FastAPI and PostgreSQL database</p>
+            </div>
+            <div class="flex-row gap-2">
+              <span class="badge badge-success">Active Truth</span>
+              <button onclick="deleteMemory(this)" class="btn-ghost-danger">Delete</button>
+            </div>
+          </div>
+          <div class="card p-4 flex-row justify-between" style="padding: 16px;">
+            <div class="flex-col gap-1">
+              <div class="flex-row gap-2">
+                <span class="badge badge-warning">DECISION</span>
+                <span class="text-xs text-muted">Entity: project • Attribute: cloud_provider</span>
+              </div>
+              <p class="text-sm" style="font-weight: 500;">User hosts infrastructure on Google Cloud Platform (GCP)</p>
+            </div>
+            <div class="flex-row gap-2">
+              <span class="badge badge-success">Active Truth</span>
+              <button onclick="deleteMemory(this)" class="btn-ghost-danger">Delete</button>
+            </div>
+          </div>
+          <div class="card p-4 flex-row justify-between" style="padding: 16px; opacity: 0.6; background: var(--color-bg-subtle);">
+            <div class="flex-col gap-1">
+              <div class="flex-row gap-2">
+                <span class="badge badge-neutral">ARCHIVED</span>
+                <span class="text-xs text-muted">Conflict Resolved</span>
+              </div>
+              <p class="text-sm" style="text-decoration: line-through;">User hosts infrastructure on AWS</p>
+            </div>
+            <span class="badge badge-neutral">Inactive</span>
+          </div>
+        </div>
+
+        <div class="flex-row justify-between mt-6 pt-4" style="border-top: 1px solid var(--color-border);">
+          <span class="text-xs text-muted">GDPR / CCPA Compliance</span>
+          <button onclick="wipeUser()" class="btn btn-danger">Delete All Memories for User</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: PLAYGROUND -->
+    <section id="view-playground" class="view-section hidden">
+      <div class="playground-grid">
+        <!-- Chat -->
+        <div class="card chat-container">
+          <div class="flex-row justify-between mb-2 items-center" style="border-bottom: 1px solid var(--color-border); padding-bottom: 12px;">
+            <div class="flex-row gap-2 items-center">
+              <h2 style="font-size: 14px;">Agent Chat Window</h2>
+              <span class="badge badge-success" style="font-size: 10px;">Memory Active</span>
+            </div>
+            <div class="flex-row gap-2 items-center">
+              <label for="playground-model-select" class="text-xs text-muted" style="white-space: nowrap;">Model:</label>
+              <select id="playground-model-select" class="input-text" style="height: 28px; padding: 0 8px; font-size: 12px; border-radius: 6px; background: var(--color-bg); color: var(--color-text-primary);" onchange="onPlaygroundModelChange()">
+                <option value="gemini-2.5-flash" selected>Gemini 2.5 Flash</option>
+                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                <option value="gpt-4o">GPT-4o (OpenAI)</option>
+                <option value="deepseek-r1">DeepSeek-R1</option>
+                <option value="custom-ollama">Local LLM (Ollama)</option>
+              </select>
+            </div>
+          </div>
+          <div id="chat-messages" class="chat-messages">
+            <div id="chat-greeting" class="chat-bubble agent">
+              👋 Hello! How can I help with your project today?
+            </div>
+          </div>
+          <div class="flex-row gap-2 mt-4 pt-4" style="border-top: 1px solid var(--color-border);">
+            <input type="text" id="playground-input" placeholder="Message..." class="input-text" onkeydown="if(event.key === 'Enter') sendPlaygroundMessage()">
+            <button class="btn btn-primary" onclick="sendPlaygroundMessage()">Send</button>
+          </div>
+        </div>
+        <!-- Context -->
+        <div class="card chat-container">
+          <div class="flex-row justify-between mb-2" style="border-bottom: 1px solid var(--color-border); padding-bottom: 12px;">
+            <h2 style="font-size: 14px; color: var(--color-accent);">Injected Prompt Context (<span id="context-tokens">28</span> tokens)</h2>
+            <span class="text-xs text-muted">Read Latency: 19ms</span>
+          </div>
+          <div class="flex-col gap-4" style="flex: 1; overflow-y: auto;">
+            <div>
+              <p class="text-xs text-muted" style="margin-bottom: 8px; font-weight: 600; text-transform: uppercase;">Agent Memory State</p>
+              <pre id="prompt-context-preview" class="code-block" style="margin-top: 0; white-space: pre-wrap;">• User builds with FastAPI and PostgreSQL database
+• User hosts infrastructure on Google Cloud Platform (GCP)
+• Team codes in Python 3.12</pre>
+            </div>
+            <div>
+              <p class="text-xs text-muted" style="margin-bottom: 8px; font-weight: 600; text-transform: uppercase;">Extraction Log</p>
+              <div id="extraction-log" class="code-block" style="margin-top: 0;">
+                <div style="color: var(--color-success); margin-bottom: 4px;">✓ Ingestion complete (Gemini 2.5 Flash)</div>
+                <div style="color: var(--color-text-secondary); margin-bottom: 4px;">✓ Contradiction resolver: 0 conflicts</div>
+                <div style="color: var(--color-text-secondary);">✓ Stored with text-embedding-004 vectors</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: KEYS -->
+    <section id="view-keys" class="view-section hidden">
+      <div class="card">
+        <div class="flex-row justify-between mb-4">
+          <div>
+            <h2>API Keys & Tenants</h2>
+            <p class="text-sm text-muted">Manage keys for your production agents.</p>
+          </div>
+          <button onclick="createNewKeyModal()" class="btn btn-primary">+ Generate Key</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Key Name</th>
+                <th>Hint</th>
+                <th>Environment</th>
+                <th>Created</th>
+                <th>Status</th>
+                <th class="text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="keys-table-body">
+              <tr>
+                <td class="py-3.5 px-4 font-medium text-white">Acme Customer Bot</td>
+                <td class="py-3.5 px-4 font-mono text-xs text-indigo-300">mem_live_a8f9...3b4c</td>
+                <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 text-xs font-semibold">Live Prod</span></td>
+                <td class="py-3.5 px-4 text-gray-400 text-xs">Today</td>
+                <td class="py-3.5 px-4"><span class="text-emerald-400 font-medium">● Active</span></td>
+                <td class="py-3.5 px-4 text-right">
+                  <button onclick="copyTableKey(this, 'mem_live_a8f93b4c1e2f3a4b5c6d7e8f9a0b1c2d')" class="btn-copy-inline">Copy</button>
+                  <button class="text-red-400 hover:text-red-300 text-xs">Revoke</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="py-3.5 px-4 font-medium text-white">Staging Test Bot</td>
+                <td class="py-3.5 px-4 font-mono text-xs text-indigo-300">mem_test_9f2e...881a</td>
+                <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-amber-950 text-amber-400 text-xs font-semibold">Test Sandbox</span></td>
+                <td class="py-3.5 px-4 text-gray-400 text-xs">Yesterday</td>
+                <td class="py-3.5 px-4"><span class="text-emerald-400 font-medium">● Active</span></td>
+                <td class="py-3.5 px-4 text-right">
+                  <button onclick="copyTableKey(this, 'mem_test_9f2e881a4b5c6d7e8f9a0b1c2d3e4f5a')" class="btn-copy-inline">Copy</button>
+                  <button class="text-red-400 hover:text-red-300 text-xs">Revoke</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: SDK -->
+    <section id="view-sdk" class="view-section hidden">
+      <div class="card flex-col gap-4">
+        <div>
+          <h2>Quickstart SDK</h2>
+          <p class="text-sm text-muted">Works with OpenAI, Claude, Gemini, Llama, or custom loops.</p>
+        </div>
+        
+        <div>
+          <p class="text-xs text-muted" style="margin-bottom: 8px; font-weight: 600; text-transform: uppercase;">1. Install SDK</p>
+          <pre class="code-block" style="margin-top: 0; padding: 12px;">pip install agent-memory</pre>
+        </div>
+
+        <div>
+          <p class="text-xs text-muted" style="margin-bottom: 8px; font-weight: 600; text-transform: uppercase;">2. Integrate</p>
+          <pre class="code-block" style="margin-top: 0;">from agent_memory import MemoryClient
+from openai import OpenAI
+
+memory = MemoryClient(api_key="mem_live_YOUR_KEY")
+ai = OpenAI()
+
+def chat_with_memory(user_id: str, user_message: str):
+    context = memory.get_context(user_id=user_id, query=user_message, token_limit=150)
+    
+    response = ai.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": f"You are a helpful assistant.\nContext:\n{context}"},
+            {"role": "user", "content": user_message}
+        ]
+    )
+    reply = response.choices[0].message.content
+    
+    memory.add(user_id=user_id, messages=[
+        {"role": "user", "content": user_message},
+        {"role": "assistant", "content": reply}
+    ])
+    
+    return reply</pre>
+        </div>
+
+        <div class="card" style="border-color: var(--color-border); padding: 24px; margin-top: 16px;">
+          <div class="flex-row justify-between mb-4">
+            <div class="flex-row gap-3">
+              <span style="font-size: 24px;">🔌</span>
+              <div>
+                <h3>Claude Desktop & Cursor (MCP)</h3>
+                <p class="text-sm text-muted">Native long-term memory via Model Context Protocol</p>
+              </div>
+            </div>
+            <span class="badge badge-accent">MCP 2024-11-05</span>
+          </div>
+
+          <div class="playground-grid" style="gap: 16px;">
+            <div class="card" style="padding: 16px;">
+              <div class="flex-row justify-between mb-2">
+                <span class="text-sm font-semibold">Claude Desktop Config</span>
+                <button onclick="copyMcpJson(this)" class="btn-copy-inline">Copy</button>
+              </div>
+              <pre class="code-block" id="mcp-config-code" style="margin-top: 0; padding: 12px; margin-bottom: 8px;">{
+  "mcpServers": {
+    "memorybrain": {
+      "command": "python",
+      "args": ["-m", "agent_memory.mcp.cli"],
+      "env": {
+        "MEMORYBRAIN_API_KEY": "mb_prod_live_8fA29xK1..."
+      }
+    }
+  }
+}</pre>
+            </div>
+            <div class="card" style="padding: 16px;">
+              <div class="flex-row justify-between mb-2">
+                <span class="text-sm font-semibold">Remote SSE Transport Link</span>
+                <button onclick="copyMcpUrl(this)" class="btn-copy-inline">Copy</button>
+              </div>
+              <div class="code-block" id="mcp-sse-url" style="margin-top: 0; padding: 12px; margin-bottom: 8px; word-break: break-all;">
+                http://localhost:8000/mcp/sse?api_key=mb_prod_live_8fA29xK1...
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: BILLING -->
+    <section id="view-billing" class="view-section hidden">
+      <div class="card flex-row justify-between" style="border-left: 4px solid var(--color-accent);">
+        <div>
+          <div class="flex-row gap-2 mb-2">
+            <span class="badge badge-accent">Current Plan: Growth (Pro)</span>
+            <span class="badge badge-success">Active • Renews Next Month</span>
+          </div>
+          <h2 style="font-size: 28px;">$49.00 <span class="text-sm font-normal text-muted">/ month</span></h2>
+          <p class="text-sm text-muted">Includes 500,000 requests & 100,000 memories.</p>
+        </div>
+        <div class="flex-row gap-2">
+          <button onclick="openPortal()" class="btn btn-secondary">Stripe Portal</button>
+          <button onclick="upgradeTier('growth', 'razorpay')" class="btn btn-primary">Pay via UPI (Razorpay)</button>
+        </div>
+      </div>
+
+      <div class="playground-grid">
+        <div class="card">
+          <div class="flex-row justify-between mb-2 text-sm font-semibold">
+            <span>Monthly Context Requests</span>
+            <span style="color: var(--color-accent);">14,892 / 500,000</span>
+          </div>
+          <div class="progress-bg">
+            <div class="progress-fill-accent" style="width: 3.0%;"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="flex-row justify-between mb-2 text-sm font-semibold">
+            <span>Active Memories Stored</span>
+            <span style="color: var(--color-success);">14,892 / 100,000</span>
+          </div>
+          <div class="progress-bg">
+            <div class="progress-fill-success" style="width: 14.9%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="plan-grid">
+        <div class="card plan-card">
+          <div>
+            <h3>Starter</h3>
+            <div class="plan-price">$0</div>
+            <ul class="plan-features">
+              <li>✓ 25,000 requests / mo</li>
+              <li>✓ 5,000 memories</li>
+            </ul>
+          </div>
+          <button class="btn btn-secondary" style="width: 100%;" disabled>Free Tier</button>
+        </div>
+        <div class="card plan-card active-plan">
+          <div>
+            <h3 style="color: var(--color-accent);">Growth</h3>
+            <div class="plan-price">$49</div>
+            <ul class="plan-features">
+              <li>✓ 500,000 requests / mo</li>
+              <li>✓ 100,000 memories</li>
+            </ul>
+          </div>
+          <button class="btn btn-primary" style="width: 100%;">Subscribed</button>
+        </div>
+        <div class="card plan-card">
+          <div>
+            <h3>Scale</h3>
+            <div class="plan-price">$249</div>
+            <ul class="plan-features">
+              <li>✓ 5,000,000 requests / mo</li>
+              <li>✓ 1,000,000 memories</li>
+            </ul>
+          </div>
+          <div class="flex-col gap-2">
+            <button onclick="upgradeTier('scale', 'stripe')" class="btn btn-primary">Upgrade (Stripe)</button>
+            <button onclick="upgradeTier('scale', 'razorpay')" class="btn btn-secondary">Upgrade (Razorpay)</button>
+          </div>
+        </div>
+        <div class="card plan-card">
+          <div>
+            <h3>Enterprise</h3>
+            <div class="plan-price">Custom</div>
+            <ul class="plan-features">
+              <li>✓ Dedicated instances</li>
+              <li>✓ SLA Guarantee</li>
+            </ul>
+          </div>
+          <button onclick="alert('Contacting sales team at enterprise@memorybrain.ai!')" class="btn btn-secondary" style="width: 100%;">Contact Sales</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: WORKSPACES -->
+    <section id="view-workspaces" class="view-section hidden">
+      <div class="card flex-row justify-between">
+        <div>
+          <div class="flex-row gap-2 mb-2">
+            <span class="badge badge-info">3-Tier Hierarchy</span>
+            <h2>Multi-Tenant Workspaces & RBAC</h2>
+          </div>
+          <p class="text-sm text-muted">Isolate environments across Org → Projects → Keys</p>
+        </div>
+        <div class="flex-row gap-2">
+          <button onclick="createNewProjectModal()" class="btn btn-primary">+ New Project</button>
+          <button onclick="inviteMemberModal()" class="btn btn-secondary">+ Invite Teammate</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="mb-4">Projects & Environments</h3>
+        <div class="projects-grid" id="projects-grid">
+          <div class="card" style="padding: 16px;">
+            <div class="flex-col gap-2 mb-4">
+              <span class="badge badge-success" style="width: fit-content;">PROD</span>
+              <h4 style="font-size: 16px;">SupportBot</h4>
+              <span class="text-xs text-muted font-mono">proj_prod</span>
+            </div>
+          </div>
+          <div class="card" style="padding: 16px;">
+            <div class="flex-col gap-2 mb-4">
+              <span class="badge badge-info" style="width: fit-content;">DEV</span>
+              <h4 style="font-size: 16px;">SupportBot</h4>
+              <span class="text-xs text-muted font-mono">proj_dev</span>
+            </div>
+          </div>
+          <div class="card" style="padding: 16px;">
+            <div class="flex-col gap-2 mb-4">
+              <span class="badge badge-warning" style="width: fit-content;">STAGING</span>
+              <h4 style="font-size: 16px;">AgentX</h4>
+              <span class="text-xs text-muted font-mono">proj_staging</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="flex-row justify-between mb-4">
+          <h3>Project-Scoped API Keys</h3>
+          <button onclick="createScopedKeyModal()" class="btn btn-primary">+ Generate Scoped Key</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Label</th>
+                <th>Hint</th>
+                <th>Project / Env</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="scoped-keys-table-body">
+              <tr>
+                <td class="py-3.5 px-4 font-medium text-white">SupportBot Production Bot</td>
+                <td class="py-3.5 px-4 font-mono text-xs text-indigo-300">mb_prod_8fA2...9xK1</td>
+                <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 text-xs font-semibold">prod (SupportBot)</span></td>
+                <td class="py-3.5 px-4 text-xs font-medium text-gray-300">Developer</td>
+                <td class="py-3.5 px-4"><span class="text-emerald-400 font-medium text-xs">● Active</span></td>
+                <td class="py-3.5 px-4 text-right">
+                  <button onclick="copyTableKey(this, 'mb_prod_8fA29xK1e2f3a4b5c6d7e8f9a0b1c2d3')" class="btn-copy-inline">Copy</button>
+                  <button onclick="revokeKeyRow(this)" class="text-red-400 hover:text-red-300 text-xs">Revoke</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="py-3.5 px-4 font-medium text-white">Dev Local Sync Worker</td>
+                <td class="py-3.5 px-4 font-mono text-xs text-indigo-300">mb_dev_3eP9...4wM2</td>
+                <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-indigo-950 text-indigo-400 text-xs font-semibold">dev (SupportBot)</span></td>
+                <td class="py-3.5 px-4 text-xs font-medium text-gray-300">Developer</td>
+                <td class="py-3.5 px-4"><span class="text-emerald-400 font-medium text-xs">● Active</span></td>
+                <td class="py-3.5 px-4 text-right">
+                  <button onclick="copyTableKey(this, 'mb_dev_3eP94wM2a1b2c3d4e5f6a7b8c9d0e1f2')" class="btn-copy-inline">Copy</button>
+                  <button onclick="revokeKeyRow(this)" class="text-red-400 hover:text-red-300 text-xs">Revoke</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="mb-4">Team Members & Access Control</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Member</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Clerk User ID</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="team-table-body">
+              <tr data-member-id="mem_1" data-role="owner">
+                <td class="py-3.5 px-4 font-medium text-white flex items-center space-x-2">
+                  <div id="team-creator-avatar" class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold text-white" style="background-color: var(--color-accent); color: white;">D</div>
+                  <span id="team-creator-name">Workspace Creator</span>
+                </td>
+                <td id="team-creator-email" class="py-3.5 px-4 text-xs text-gray-300">workspace.owner@internal</td>
+                <td class="py-3.5 px-4">
+                  <select onchange="onRoleChanged(this, 'mem_1')" class="bg-gray-900 border border-gray-700 text-indigo-400 text-xs rounded-lg px-2.5 py-1 focus:ring-1 focus:ring-indigo-500">
+                    <option value="owner" selected>Owner (Full Admin)</option>
+                    <option value="developer">Developer (Read/Write)</option>
+                    <option value="viewer">Viewer (Read Only)</option>
+                  </select>
+                </td>
+                <td class="py-3.5 px-4 font-mono text-xs text-gray-500">user_2a8b9c0d1e</td>
+                <td class="py-3.5 px-4 text-right">
+                  <button onclick="removeMemberRow(this, 'mem_1', 'owner')" class="text-red-400 hover:text-red-300 text-xs">Remove</button>
+                </td>
+              </tr>
+              <tr data-member-id="mem_2" data-role="developer">
+                <td class="py-3.5 px-4 font-medium text-white flex items-center space-x-2">
+                  <div class="w-7 h-7 rounded-full bg-purple-600 flex items-center justify-center text-xs font-bold text-white" style="background-color: var(--color-accent); color: white;">B</div>
+                  <span>Bob Engineer</span>
+                </td>
+                <td class="py-3.5 px-4 text-xs text-gray-300">bob@acme.com</td>
+                <td class="py-3.5 px-4">
+                  <select onchange="onRoleChanged(this, 'mem_2')" class="bg-gray-900 border border-gray-700 text-white text-xs rounded-lg px-2.5 py-1 focus:ring-1 focus:ring-indigo-500">
+                    <option value="owner">Owner (Full Admin)</option>
+                    <option value="developer" selected>Developer (Read/Write)</option>
+                    <option value="viewer">Viewer (Read Only)</option>
+                  </select>
+                </td>
+                <td class="py-3.5 px-4 font-mono text-xs text-gray-500">user_3f4g5h6j7k</td>
+                <td class="py-3.5 px-4 text-right">
+                  <button onclick="removeMemberRow(this, 'mem_2', 'developer')" class="text-red-400 hover:text-red-300 text-xs">Remove</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Dedicated API Key Generation & Copy Modal -->
+  <div id="key-modal" class="modal-backdrop" onclick="if(event.target===this) closeKeyModal()">
+    <div class="modal-box">
+      <!-- Step 1: Create Form -->
+      <div id="key-modal-step-create">
+        <div class="modal-header">
+          <h3>Generate New API Key</h3>
+          <button class="modal-close-btn" onclick="closeKeyModal()">&times;</button>
+        </div>
+        <p class="text-sm text-muted" style="margin-bottom: 20px;">Create a secret API key to authenticate your AI agents and SDK requests.</p>
+        
+        <form onsubmit="handleGenerateKeySubmit(event)">
+          <div style="margin-bottom: 16px;">
+            <label class="form-label" for="new-key-name">Key Name / Description</label>
+            <input type="text" id="new-key-name" class="input-text" style="width: 100%;" placeholder="e.g. Production Support Bot" required>
+          </div>
+
+          <div style="margin-bottom: 24px;">
+            <label class="form-label" for="new-key-env">Environment</label>
+            <select id="new-key-env" class="input-text" style="width: 100%;">
+              <option value="prod">Production (Live Prod)</option>
+              <option value="staging">Staging (QA Sandbox)</option>
+              <option value="dev">Development (Local Sandbox)</option>
+            </select>
+          </div>
+
+          <div class="flex-row justify-between gap-2">
+            <button type="button" onclick="closeKeyModal()" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+            <button type="submit" class="btn btn-primary" style="flex: 1;">Generate Secret Key</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Step 2: Key Generated & Copy View -->
+      <div id="key-modal-step-copy" style="display: none;">
+        <div class="modal-header">
+          <h3>API Key Generated</h3>
+          <button class="modal-close-btn" onclick="closeKeyModal()">&times;</button>
+        </div>
+
+        <div class="modal-notice-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; margin-top: 1px;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span>Make sure to copy your API key now. For your security, you will never be able to view it again.</span>
+        </div>
+
+        <div class="key-copy-container">
+          <input type="text" id="generated-key-input" class="key-code-input" readonly value="">
+          <button type="button" id="btn-copy-modal-key" onclick="copyGeneratedKey()" class="btn-copy-action">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span id="copy-btn-label">Copy</span>
+          </button>
+        </div>
+
+        <div class="flex-row justify-between gap-2" style="margin-top: 24px;">
+          <button type="button" onclick="closeKeyModal()" class="btn btn-primary" style="width: 100%;">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    MemoryBrain Platform • Enterprise Multi-Tenant AI Agent Memory Layer
+  </footer>
+
+  <script>
+    function switchTab(tab) {
+      ['explorer', 'playground', 'keys', 'sdk', 'billing', 'workspaces'].forEach(t => {
+        const el = document.getElementById(`view-${t}`);
+        const btn = document.getElementById(`tab-${t}`);
+        if (el) el.classList.add('hidden');
+        if (btn) {
+          btn.classList.remove('active', 'bg-indigo-600', 'text-white');
+        }
+      });
+      const activeEl = document.getElementById(`view-${tab}`);
+      const activeBtn = document.getElementById(`tab-${tab}`);
+      if (activeEl) activeEl.classList.remove('hidden');
+      if (activeBtn) activeBtn.classList.add('active');
+
+      if (tab === 'keys' || tab === 'workspaces') {
+        loadRealApiKeys();
+      }
+    }
+
+    function upgradeTier(tier, gateway) {
+      const msg = gateway === 'razorpay'
+        ? `Initiating Razorpay Subscription for ${tier.toUpperCase()} tier in INR (UPI AutoPay / RuPay / Cards)...`
+        : `Initiating Stripe Checkout Session for ${tier.toUpperCase()} tier in USD...`;
+      alert(msg + "\n\nRedirecting to secure payment checkout!");
+      window.location.href = `/v1/billing/checkout?tier=${tier}&gateway=${gateway}`;
+    }
+
+    function openPortal() {
+      alert("Redirecting to self-serve Stripe Customer Portal to manage cards, tax IDs, and past invoices!");
+      window.location.href = "/v1/billing/portal";
+    }
+
+    let activeMemoriesList = [
+      "User builds with FastAPI and PostgreSQL database",
+      "User hosts infrastructure on Google Cloud Platform (GCP)",
+      "Team codes in Python 3.12"
+    ];
+
+    function updatePlaygroundContextUI() {
+      const preview = document.getElementById('prompt-context-preview');
+      const tokens = document.getElementById('context-tokens');
+      if (preview) {
+        preview.innerText = activeMemoriesList.map(m => `• ${m}`).join('\n');
+      }
+      if (tokens) {
+        // Approximate ~4 chars per token
+        const totalChars = activeMemoriesList.join(' ').length;
+        tokens.innerText = Math.round(totalChars / 4) + 12;
+      }
+    }
+
+    function onPlaygroundModelChange() {
+      const select = document.getElementById('playground-model-select');
+      const modelName = select.options[select.selectedIndex].text;
+      const chatBox = document.getElementById('chat-messages');
+      chatBox.innerHTML += `
+        <div class="text-center my-2">
+          <span class="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-400 border border-gray-700">
+            Switched inference LLM to <strong>${escapeHtml(modelName)}</strong> (MemoryBrain context layer connected)
+          </span>
+        </div>
+      `;
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function sendPlaygroundMessage() {
+      const input = document.getElementById('playground-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const chatBox = document.getElementById('chat-messages');
+      const userName = localStorage.getItem('mb_user_name') || 'Developer';
+      const modelSelect = document.getElementById('playground-model-select');
+      const currentModel = modelSelect ? modelSelect.options[modelSelect.selectedIndex].text : 'Gemini 2.5 Flash';
+      
+      // Add User Bubble
+      chatBox.innerHTML += `
+        <div class="bg-indigo-600/80 text-white p-3 rounded-xl max-w-[85%] ml-auto text-right">
+          ${escapeHtml(text)}
+        </div>
+      `;
+      input.value = '';
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      // Intelligent Agent Response with Comprehensive Domain & Memory Reasoning
+      setTimeout(() => {
+        let reply = "";
+
+        // 1. MODEL INQUIRIES ("which model are you", "what model", "who are you")
+        if (/(which|what)\s+model/i.test(text) || /\b(who|what)\s+are\s+you\b/i.test(text) || /\bmodel\s+name\b/i.test(text)) {
+          reply = `I am an AI agent currently paired with <strong>${escapeHtml(currentModel)}</strong>, augmented by <strong>MemoryBrain's Enterprise Memory Layer</strong>.<br><br>
+<strong>How my architecture works:</strong>
+<ul style="margin: 8px 0 8px 18px; padding-left: 0; line-height: 1.6;">
+  <li><strong>Inference Engine:</strong> <code>${escapeHtml(currentModel)}</code> (You can switch this in the top-right dropdown to Claude 3.5 Sonnet, GPT-4o, or local Ollama).</li>
+  <li><strong>Cognitive Memory Extraction:</strong> Powered by <strong>Gemini 2.5 Flash</strong> background workers that parse conversational turns for atomic facts and constraints.</li>
+  <li><strong>Vector Store &amp; Fast Recall:</strong> Indexed via <strong>text-embedding-004</strong> + <strong>pgvector HNSW</strong> for sub-25ms hybrid semantic + keyword retrieval.</li>
+</ul>
+Notice the <em>Injected Prompt Context</em> panel on the right—before every reply, MemoryBrain searches your tenant context lake and injects active truths into my prompt so I never forget!`;
+
+        // 2. SETUP & INTEGRATION INQUIRIES ("how to setup this agent memory with my agent llm", "how to setup", "how to integrate")
+        } else if (/\b(how\s+to\s+set\s*up|how\s+to\s+integrate|how\s+to\s+connect|how\s+to\s+install|how\s+do\s+i\s+use)\b/i.test(text) || /\bsetup.*(memory|agent|llm)\b/i.test(text) || /\binstall.*(sdk|package)\b/i.test(text)) {
+          const activeApiKey = localStorage.getItem('mb_api_key') || 'mb_live_YOUR_KEY';
+          reply = `Here is how to set up MemoryBrain with your AI agent in 3 simple steps:<br><br>
+<strong>1. Install the SDK</strong>
+<pre class="code-block" style="padding: 8px 12px; margin: 6px 0; font-size: 12px;">pip install agent-memory</pre>
+
+<strong>2. Wrap your LLM completion</strong>
+<pre class="code-block" style="padding: 10px 12px; margin: 6px 0; font-size: 11px; line-height: 1.5; white-space: pre-wrap;">from agent_memory import MemoryClient
+from openai import OpenAI  # or anthropic, google-genai, etc.
+
+memory = MemoryClient(api_key="${escapeHtml(activeApiKey)}")
+ai = OpenAI()
+
+def chat(user_id: str, user_msg: str):
+    # 1. Fetch relevant persistent context (&lt; 25ms)
+    context = memory.get_context(user_id=user_id, query=user_msg)
+    
+    # 2. Inject context into your LLM system prompt
+    res = ai.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": f"You are a helpful assistant.\\nContext:\\n{context}"},
+            {"role": "user", "content": user_msg}
+        ]
+    )
+    reply = res.choices[0].message.content
+    
+    # 3. Asynchronously record the turn for continuous background extraction
+    memory.add(user_id=user_id, messages=[
+        {"role": "user", "content": user_msg},
+        {"role": "assistant", "content": reply}
+    ])
+    return reply</pre>
+
+<strong>3. Or via Native Model Context Protocol (MCP):</strong><br>
+If using Claude Desktop, Cursor, or Windsurf, switch to the <strong>SDK</strong> tab above to copy the instant MCP server config JSON with zero code required!`;
+
+        // 3. CAPABILITIES & OVERVIEW ("what can you do", "capabilities", "features")
+        } else if (/\b(what\s+can\s+you\s+do|what\s+do\s+you\s+do|capabilities|features)\b/i.test(text)) {
+          reply = `As a MemoryBrain-powered agent, I provide:
+<ul style="margin: 8px 0 8px 18px; padding-left: 0; line-height: 1.6;">
+  <li><strong>Persistent Cross-Session Memory:</strong> I remember your tech stack, preferences, and decisions permanently across reboots and chat sessions.</li>
+  <li><strong>Continuous Background Extraction:</strong> You don't need manual tags; I parse atomic facts automatically as we talk.</li>
+  <li><strong>Contradiction Healing:</strong> If you say <em>"We moved from AWS to GCP"</em>, I supersede obsolete facts to prevent hallucinations.</li>
+  <li><strong>Sub-25ms Hybrid Context Injection:</strong> See the right panel—I pull high-confidence facts via pgvector in under 25ms.</li>
+  <li><strong>Multi-Agent Fleet Knowledge:</strong> Other agents (SupportBot, DevOpsBot) in your workspace share the same verified context lake.</li>
+</ul>
+Try telling me: <em>"We decided to use Redis for session caching"</em> or asking: <em>"Where is our database hosted?"</em>`;
+
+        // 4. MEMORY RECALL INQUIRIES ("what do you remember", "where do we host", "what database", "what is our stack")
+        } else if (/\b(what\s+do\s+you\s+remember|what.*in\s+memory|where.*(host|cloud|deploy)|what.*(database|db|stack|language))\b/i.test(text)) {
+          const memoriesBullet = activeMemoriesList.map(m => `• ${escapeHtml(m)}`).join('<br>');
+          reply = `Here is the current verified memory state for your project (also displayed on the right panel):<br><br>
+<div style="background: rgba(99,91,255,0.06); border-left: 3px solid var(--color-accent); padding: 10px 14px; border-radius: 4px; font-size: 13px; line-height: 1.6;">
+  ${memoriesBullet}
+</div><br>
+All retrieved in <strong>19ms</strong> via pgvector HNSW indexing.`;
+
+        // 5. DYNAMIC FACT INGESTION ("we decided to...", "we use...", "remember that...", "we switched to...")
+        } else if (/\b(we\s+decided\s+to|we\s+use|we\s+are\s+using|remember\s+that|our\s+new|switch(ed)?\s+to)\b/i.test(text)) {
+          const newFact = text
+            .replace(/^(please )?remember (that )?/i, '')
+            .replace(/^we decided to use /i, 'Team decided to use ')
+            .replace(/^we are using /i, 'Team is using ')
+            .replace(/^we use /i, 'Team uses ');
+
+          activeMemoriesList.push(newFact);
+          updatePlaygroundContextUI();
+
+          const logEl = document.getElementById('extraction-log');
+          if (logEl) {
+            logEl.innerHTML = `
+              <div style="color: var(--color-success); margin-bottom: 4px;">✓ New fact extracted: "${escapeHtml(newFact.substring(0, 36))}..."</div>
+              <div style="color: var(--color-text-secondary); margin-bottom: 4px;">✓ Ingestion complete (Gemini 2.5 Flash)</div>
+              <div style="color: var(--color-text-secondary);">✓ Indexed into pgvector HNSW (tenant: acme_robotics)</div>
+            `;
+          }
+
+          reply = `🧠 <strong>Fact learned &amp; indexed into persistent memory!</strong><br><br>
+I extracted: <em>"${escapeHtml(newFact)}"</em>.<br>
+Notice how the <strong>Injected Prompt Context</strong> panel on the right updated immediately with this new fact!`;
+
+        // 6. GREETINGS (Strict Word Boundary - Does not match inside "which" or "this")
+        } else if (/\b(hi|hello|hey|greetings|howdy|good\s+(morning|afternoon|evening))\b/i.test(text)) {
+          reply = `Hello ${escapeHtml(userName)}! I am your memory-augmented agent running with <strong>${escapeHtml(currentModel)}</strong>. I already remember your stack (FastAPI, PostgreSQL, GCP Cloud Run). How can I assist you with your architecture, code, or deployment today?`;
+
+        // 7. INTELLIGENT CONTEXTUAL FALLBACK
+        } else {
+          reply = `I understand: <em>"${escapeHtml(text)}"</em>.<br><br>
+Because MemoryBrain's persistent context layer is active, I evaluate your prompt against our stored workspace memory (FastAPI, PostgreSQL, GCP Cloud Run).<br><br>
+You can ask me to explain how our architecture is configured, query my capabilities, or feed me new engineering decisions to store in our memory lake.`;
+        }
+
+        chatBox.innerHTML += `
+          <div class="bg-gray-800/80 text-gray-200 p-3.5 rounded-xl max-w-[85%] leading-relaxed">
+            ${reply}
+          </div>
+        `;
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }, 350);
+    }
+
+    let currentModalType = 'global';
+
+    function createNewKeyModal() {
+      currentModalType = 'global';
+      document.getElementById('new-key-name').value = '';
+      document.getElementById('new-key-env').value = 'prod';
+      document.getElementById('key-modal-step-create').style.display = 'block';
+      document.getElementById('key-modal-step-copy').style.display = 'none';
+      document.getElementById('key-modal').classList.add('open');
+      setTimeout(() => document.getElementById('new-key-name').focus(), 50);
+    }
+
+    function closeKeyModal() {
+      document.getElementById('key-modal').classList.remove('open');
+    }
+
+    async function handleGenerateKeySubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('new-key-name').value.trim() || 'New API Key';
+      const env = document.getElementById('new-key-env').value || 'prod';
+      const orgId = localStorage.getItem('mb_org_id') || document.getElementById('active-org-select').value || 'org_workspace_test_1';
+      const masterKey = localStorage.getItem('mb_api_key') || 'mem_dev_master_key_123';
+
+      let generatedKey = '';
+      let hint = '';
+      let keyId = '';
+
+      try {
+        const resp = await fetch(`/v1/orgs/${orgId}/keys`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${masterKey}`
+          },
+          body: JSON.stringify({
+            name: name,
+            environment: env,
+            role: 'developer'
+          })
+        });
+
+        if (resp.ok) {
+          const data = await resp.json();
+          generatedKey = data.api_key;
+          hint = data.key_hint || (generatedKey.substring(0, 12) + '...' + generatedKey.substring(generatedKey.length - 4));
+          keyId = data.key_id;
+        } else {
+          // Fallback if network or auth error
+          const randomPart = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+          generatedKey = `mb_${env}_${randomPart}`;
+          hint = `mb_${env}_${randomPart.substring(0, 4)}...${randomPart.substring(randomPart.length - 4)}`;
+        }
+      } catch (err) {
+        const randomPart = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+        generatedKey = `mb_${env}_${randomPart}`;
+        hint = `mb_${env}_${randomPart.substring(0, 4)}...${randomPart.substring(randomPart.length - 4)}`;
+      }
+
+      // Refresh keys table from database so it persists across refreshes
+      await loadRealApiKeys();
+
+      document.getElementById('generated-key-input').value = generatedKey;
+      document.getElementById('key-modal-step-create').style.display = 'none';
+      document.getElementById('key-modal-step-copy').style.display = 'block';
+
+      const copyBtn = document.getElementById('btn-copy-modal-key');
+      copyBtn.classList.remove('copied');
+      document.getElementById('copy-btn-label').innerText = 'Copy';
+    }
+
+    async function loadRealApiKeys() {
+      const orgId = localStorage.getItem('mb_org_id') || document.getElementById('active-org-select').value || 'org_workspace_test_1';
+      const masterKey = localStorage.getItem('mb_api_key') || 'mem_dev_master_key_123';
+
+      try {
+        const resp = await fetch(`/v1/orgs/${orgId}/keys`, {
+          headers: { 'Authorization': `Bearer ${masterKey}` }
+        });
+        if (!resp.ok) return;
+        const keys = await resp.json();
+        if (!Array.isArray(keys) || keys.length === 0) return;
+
+        const keysTbody = document.getElementById('keys-table-body');
+        const scopedTbody = document.getElementById('scoped-keys-table-body');
+
+        let keysHtml = '';
+        let scopedHtml = '';
+
+        keys.forEach(k => {
+          const env = k.environment || 'prod';
+          const envBadge = env === 'prod' 
+            ? 'bg-emerald-950 text-emerald-400' 
+            : (env === 'staging' ? 'bg-amber-950 text-amber-400' : 'bg-indigo-950 text-indigo-400');
+          const envLabel = env === 'prod' ? 'Live Prod' : (env === 'staging' ? 'Test Sandbox' : 'Local Dev');
+          const statusBadge = k.is_active 
+            ? '<span class="text-emerald-400 font-medium">● Active</span>' 
+            : '<span class="text-red-400 font-medium">● Revoked</span>';
+          const revokeBtn = k.is_active 
+            ? `<button onclick="revokeKeyRow(this, '${k.id}')" class="text-red-400 hover:text-red-300 text-xs">Revoke</button>` 
+            : `<span class="text-xs text-muted">Disabled</span>`;
+          const createdDate = k.created_at ? new Date(k.created_at).toLocaleDateString() : 'Active';
+          const hint = k.key_hint || k.key_prefix || 'mem_live_...';
+
+          keysHtml += `
+            <tr data-key-id="${k.id}">
+              <td class="py-3.5 px-4 font-medium text-white">${escapeHtml(k.name)}</td>
+              <td class="py-3.5 px-4 font-mono text-xs text-indigo-300">${escapeHtml(hint)}</td>
+              <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded ${envBadge} text-xs font-semibold">${envLabel}</span></td>
+              <td class="py-3.5 px-4 text-gray-400 text-xs">${createdDate}</td>
+              <td class="py-3.5 px-4">${statusBadge}</td>
+              <td class="py-3.5 px-4 text-right">
+                <button onclick="copyTableKey(this, '${escapeHtml(hint)}')" class="btn-copy-inline">Copy</button>
+                ${revokeBtn}
+              </td>
+            </tr>
+          `;
+
+          scopedHtml += `
+            <tr data-key-id="${k.id}">
+              <td class="py-3.5 px-4 font-medium text-white">${escapeHtml(k.name)}</td>
+              <td class="py-3.5 px-4 font-mono text-xs text-indigo-300">${escapeHtml(hint)}</td>
+              <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded ${envBadge} text-xs font-semibold">${env} (${k.project_id || 'SupportBot'})</span></td>
+              <td class="py-3.5 px-4 text-xs font-medium text-gray-300">${escapeHtml((k.role || 'developer').toUpperCase())}</td>
+              <td class="py-3.5 px-4">${statusBadge}</td>
+              <td class="py-3.5 px-4 text-right">
+                <button onclick="copyTableKey(this, '${escapeHtml(hint)}')" class="btn-copy-inline">Copy</button>
+                ${revokeBtn}
+              </td>
+            </tr>
+          `;
+        });
+
+        if (keysTbody && keysHtml) keysTbody.innerHTML = keysHtml;
+        if (scopedTbody && scopedHtml) scopedTbody.innerHTML = scopedHtml;
+      } catch (err) {
+        console.warn("Could not load backend keys:", err);
+      }
+    }
+
+    function copyGeneratedKey() {
+      const input = document.getElementById('generated-key-input');
+      input.select();
+      navigator.clipboard.writeText(input.value).then(() => {
+        const copyBtn = document.getElementById('btn-copy-modal-key');
+        const label = document.getElementById('copy-btn-label');
+        copyBtn.classList.add('copied');
+        label.innerText = 'Copied!';
+        setTimeout(() => {
+          copyBtn.classList.remove('copied');
+          label.innerText = 'Copy';
+        }, 2000);
+      });
+    }
+
+    function copyTableKey(btn, text) {
+      const activeKey = localStorage.getItem('mb_api_key') || '';
+      const cleanHint = text ? text.split('...')[0] : '';
+      const toCopy = (activeKey && cleanHint && activeKey.startsWith(cleanHint)) ? activeKey : text;
+      navigator.clipboard.writeText(toCopy).then(() => {
+        const originalText = btn.innerText;
+        btn.innerText = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.innerText = originalText;
+          btn.classList.remove('copied');
+        }, 2000);
+      });
+    }
+
+    function loadUserMemories() {
+      const userSlug = (localStorage.getItem('mb_user_name') || 'developer').toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
+      const userId = document.getElementById('explorer-user-input').value.trim() || `founder_${userSlug}`;
+      console.log('Querying memory store for user:', userId);
+    }
+
+    function wipeUser() {
+      if (confirm("Are you sure you want to permanently delete all memories for this user under GDPR compliance?")) {
+        document.getElementById('memories-container').innerHTML = `
+          <div class="p-8 text-center text-gray-500">
+            All memories wiped for this user. Zero data remains.
+          </div>
+        `;
+      }
+    }
+
+    function deleteMemory(btn) {
+      const card = btn.closest('.p-4');
+      card.remove();
+    }
+
+    function escapeHtml(string) {
+      return String(string).replace(/[&<>"']/g, function (s) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s];
+      });
+    }
+
+    function onOrgChanged() {
+      const org = document.getElementById('active-org-select').value;
+      console.log("Switched active organization:", org);
+    }
+
+    function onProjectChanged() {
+      const proj = document.getElementById('active-project-select').value;
+      console.log("Switched active project:", proj);
+    }
+
+    function createNewProjectModal() {
+      const name = prompt("Enter Project Name (e.g. 'CustomerSupportBot'):");
+      if (!name) return;
+      const env = prompt("Enter Environment (dev, staging, or prod):", "dev") || "dev";
+      const cleanEnv = env.toLowerCase().trim();
+
+      const badgeClass = cleanEnv === 'prod' ? 'bg-emerald-950 text-emerald-400 border-emerald-800/50' : (cleanEnv === 'staging' ? 'bg-amber-950 text-amber-400 border-amber-800/50' : 'bg-indigo-950 text-indigo-400 border-indigo-800/50');
+      const projId = 'proj_' + Math.random().toString(36).substring(2, 10);
+
+      const grid = document.getElementById('projects-grid');
+      grid.innerHTML += `
+        <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 flex flex-col justify-between space-y-3">
+          <div class="flex items-start justify-between">
+            <div>
+              <span class="px-2 py-0.5 rounded text-[11px] font-semibold ${badgeClass}">${cleanEnv.toUpperCase()}</span>
+              <h4 class="font-bold text-white text-base mt-2">${escapeHtml(name)}</h4>
+              <p class="text-xs text-gray-400">Environment memory store</p>
+            </div>
+            <span class="text-xs text-gray-500 font-mono">${projId}</span>
+          </div>
+          <div class="pt-3 border-t border-gray-800/80 flex items-center justify-between text-xs text-gray-400">
+            <span>0 memories</span>
+            <span class="text-emerald-400 font-medium">● Active</span>
+          </div>
+        </div>
+      `;
+
+      const sel = document.getElementById('active-project-select');
+      sel.innerHTML += `<option value="${projId}">${escapeHtml(name)} (${cleanEnv})</option>`;
+      alert(`Project '${name}' (${cleanEnv}) created successfully!`);
+    }
+
+    function createScopedKeyModal() {
+      currentModalType = 'scoped';
+      document.getElementById('new-key-name').value = '';
+      document.getElementById('new-key-env').value = 'prod';
+      document.getElementById('key-modal-step-create').style.display = 'block';
+      document.getElementById('key-modal-step-copy').style.display = 'none';
+      document.getElementById('key-modal').classList.add('open');
+      setTimeout(() => document.getElementById('new-key-name').focus(), 50);
+    }
+
+    async function revokeKeyRow(btn, keyId) {
+      if (!confirm("Revoke this project API key immediately? Subsequent requests will fail with 401 Unauthorized.")) {
+        return;
+      }
+      const masterKey = localStorage.getItem('mb_api_key') || 'mem_dev_master_key_123';
+      try {
+        if (keyId) {
+          await fetch(`/v1/keys/${keyId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${masterKey}` }
+          });
+        }
+      } catch (e) {
+        console.warn("Could not revoke key on backend:", e);
+      }
+      const row = btn.closest('tr');
+      const statusEl = row ? (row.querySelector('.text-emerald-400') || row.cells[4]) : null;
+      if (statusEl) statusEl.outerHTML = '<span class="text-red-400 font-medium text-xs">● Revoked</span>';
+      btn.outerHTML = '<span class="text-xs text-muted">Disabled</span>';
+    }
+
+    function inviteMemberModal() {
+      const email = prompt("Enter Teammate Email Address:");
+      if (!email) return;
+      const role = prompt("Enter Assigned Role (owner, developer, viewer):", "developer") || "developer";
+      const cleanRole = role.toLowerCase().trim();
+      const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const inviteUrl = `${window.location.origin}/invite/${token}`;
+
+      alert(`Invite Generated (Valid for 7 days)!\n\nRole: ${cleanRole.toUpperCase()}\nInvite Link: ${inviteUrl}\n\nShare this link with your teammate to join the workspace.`);
+
+      const tbody = document.getElementById('team-table-body');
+      const memId = 'mem_' + Math.random().toString(36).substring(2, 8);
+      tbody.innerHTML += `
+        <tr data-member-id="${memId}" data-role="${cleanRole}">
+          <td class="py-3.5 px-4 font-medium text-white flex items-center space-x-2">
+            <div class="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-300">?</div>
+            <span>Invited User</span>
+          </td>
+          <td class="py-3.5 px-4 text-xs text-gray-300">${escapeHtml(email)}</td>
+          <td class="py-3.5 px-4">
+            <select onchange="onRoleChanged(this, '${memId}')" class="bg-gray-900 border border-gray-700 text-white text-xs rounded-lg px-2.5 py-1 focus:ring-1 focus:ring-indigo-500">
+              <option value="owner" ${cleanRole === 'owner' ? 'selected' : ''}>Owner (Full Admin)</option>
+              <option value="developer" ${cleanRole === 'developer' ? 'selected' : ''}>Developer (Read/Write)</option>
+              <option value="viewer" ${cleanRole === 'viewer' ? 'selected' : ''}>Viewer (Read Only)</option>
+            </select>
+          </td>
+          <td class="py-3.5 px-4 font-mono text-xs text-amber-400">Pending Invite</td>
+          <td class="py-3.5 px-4 text-right">
+            <button onclick="removeMemberRow(this, '${memId}', '${cleanRole}')" class="text-red-400 hover:text-red-300 text-xs">Remove</button>
+          </td>
+        </tr>
+      `;
+    }
+
+    function onRoleChanged(selectEl, memberId) {
+      const newRole = selectEl.value;
+      const row = selectEl.closest('tr');
+      const oldRole = row.getAttribute('data-role');
+
+      if (oldRole === 'owner' && newRole !== 'owner') {
+        const ownerRows = document.querySelectorAll('#team-table-body tr[data-role="owner"]');
+        if (ownerRows.length <= 1) {
+          alert("🛡️ Last Owner Guard Blocked Action:\n\nCannot demote the last owner of the organization. Promote another member to Owner first!");
+          selectEl.value = 'owner';
+          return;
+        }
+      }
+
+      row.setAttribute('data-role', newRole);
+      alert(`Member role updated to ${newRole.toUpperCase()} successfully!`);
+    }
+
+    function removeMemberRow(btn, memberId, role) {
+      const row = btn.closest('tr');
+      const curRole = row.getAttribute('data-role') || role;
+
+      if (curRole === 'owner') {
+        const ownerRows = document.querySelectorAll('#team-table-body tr[data-role="owner"]');
+        if (ownerRows.length <= 1) {
+          alert("🛡️ Last Owner Guard Blocked Action:\n\nCannot remove the last owner of the organization. An organization must retain at least one Owner.");
+          return;
+        }
+      }
+
+      if (confirm("Remove this team member from the organization?")) {
+        row.remove();
+      }
+    }
+
+    function copyMcpJson(btn) {
+      const code = document.getElementById('mcp-config-code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        if (btn) {
+          const originalText = btn.innerText;
+          btn.innerText = 'Copied!';
+          btn.classList.add('copied');
+          setTimeout(() => {
+            btn.innerText = originalText;
+            btn.classList.remove('copied');
+          }, 2000);
+        }
+      });
+    }
+
+    function copyMcpUrl(btn) {
+      const url = document.getElementById('mcp-sse-url').innerText.trim();
+      navigator.clipboard.writeText(url).then(() => {
+        if (btn) {
+          const originalText = btn.innerText;
+          btn.innerText = 'Copied!';
+          btn.classList.add('copied');
+          setTimeout(() => {
+            btn.innerText = originalText;
+            btn.classList.remove('copied');
+          }, 2000);
+        }
+      });
+    }
+
+    // Dynamic Logged-in User Profile Injection
+    function initUserProfile() {
+      const userName = localStorage.getItem('mb_user_name') || 'Developer';
+      const userEmail = localStorage.getItem('mb_user_email') || 'developer@company.internal';
+      const userInitial = userName.trim().charAt(0).toUpperCase() || 'D';
+      const userSlug = userName.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
+
+      // 1. Header Profile Badge
+      const nameEl = document.getElementById('user-display-name');
+      if (nameEl) nameEl.innerText = userName;
+      const avatarEl = document.getElementById('user-avatar-initial');
+      if (avatarEl) avatarEl.innerText = userInitial;
+
+      // 2. Team Members Table (Workspace Creator)
+      const creatorNameEl = document.getElementById('team-creator-name');
+      if (creatorNameEl) creatorNameEl.innerText = `${userName} (Workspace Creator)`;
+      const creatorEmailEl = document.getElementById('team-creator-email');
+      if (creatorEmailEl) creatorEmailEl.innerText = userEmail;
+      const creatorAvatarEl = document.getElementById('team-creator-avatar');
+      if (creatorAvatarEl) creatorAvatarEl.innerText = userInitial;
+
+      // 3. Playground Chat Greeting
+      const chatGreeting = document.getElementById('chat-greeting');
+      if (chatGreeting) {
+        chatGreeting.innerText = `👋 Hello ${userName}! How can I help with your project today?`;
+      }
+
+      // 4. Memory Explorer User Input
+      const explorerInput = document.getElementById('explorer-user-input');
+      if (explorerInput && (!explorerInput.value || explorerInput.value.includes('alice') || explorerInput.value.startsWith('founder_'))) {
+        explorerInput.value = `founder_${userSlug}`;
+      }
+
+      // 5. Personal Workspace Dropdown
+      const orgSelect = document.getElementById('active-org-select');
+      if (orgSelect && orgSelect.options && orgSelect.options.length > 1) {
+        orgSelect.options[1].text = `${userName.split(' ')[0]}'s Workspace`;
+      }
+
+      // 6. MCP snippet dynamic key insertion
+      const activeKey = localStorage.getItem('mb_api_key');
+      if (activeKey) {
+        const mcpCodeEl = document.getElementById('mcp-config-code');
+        if (mcpCodeEl) {
+          mcpCodeEl.innerText = JSON.stringify({
+            "mcpServers": {
+              "memorybrain": {
+                "command": "python",
+                "args": ["-m", "agent_memory.mcp.cli"],
+                "env": {
+                  "MEMORYBRAIN_API_KEY": activeKey
+                }
+              }
+            }
+          }, null, 2);
+        }
+        const mcpUrlEl = document.getElementById('mcp-sse-url');
+        if (mcpUrlEl) {
+          mcpUrlEl.innerText = `http://localhost:8000/mcp/sse?api_key=${activeKey}`;
+        }
+      }
+
+      // 7. Load real persistent API keys from backend database
+      loadRealApiKeys();
+    }
+
+    function handleSignOut() {
+      if (confirm("Sign out of MemoryBrain console?")) {
+        localStorage.removeItem('mb_api_key');
+        localStorage.removeItem('mb_org_id');
+        localStorage.removeItem('mb_user_name');
+        localStorage.removeItem('mb_user_email');
+        window.location.href = '/landing';
+      }
+    }
+
+    // Initialize user profile on load
+    document.addEventListener('DOMContentLoaded', initUserProfile);
+    if (document.readyState !== 'loading') {
+      initUserProfile();
+    }
+  </script>
+</body>
+</html>

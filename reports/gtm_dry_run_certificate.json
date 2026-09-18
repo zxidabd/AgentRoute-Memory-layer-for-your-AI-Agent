@@ -1,0 +1,34 @@
+{
+  "timestamp": "2026-09-13T03:48:08.723482+00:00",
+  "status": "PASS",
+  "checks": {
+    "gtm_assets": {
+      "status": "PASS",
+      "count": 8
+    },
+    "pricing_tiers": {
+      "status": "PASS",
+      "starter_usd": 0.0,
+      "growth_usd": 49.0,
+      "enterprise_usd": 1999.0
+    }
+  },
+  "visitor_simulation": {
+    "org_created": "org_f0bb6e2b",
+    "project_created": "proj_f0bb6e2b",
+    "api_key_prefix": "mb_prod_OS..."
+  },
+  "latency_metrics": {
+    "store_latency_ms": 46.27,
+    "recall_latency_ms": 14.76,
+    "sla_threshold_ms": 50.0,
+    "within_sla": true
+  },
+  "gtm_baseline_summary": {
+    "total_organizations": 46,
+    "activated_organizations": 26,
+    "activation_rate_pct": 56.52,
+    "paid_conversion_rate_pct": 67.39
+  },
+  "sla_certification": "Step 6 Go-to-Market Readiness Certified (Dry-Run Pass)"
+}

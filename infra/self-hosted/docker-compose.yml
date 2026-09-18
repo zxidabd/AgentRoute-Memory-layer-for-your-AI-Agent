@@ -1,0 +1,113 @@
+version: "3.8"
+
+services:
+  # -----------------------------------------------------------------------------------
+  # 1. MemoryBrain API Server (FastAPI + Gunicorn)
+  # -----------------------------------------------------------------------------------
+  api:
+    image: ghcr.io/memorybrain/memorybrain-api:v1.2.0
+    container_name: memorybrain-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - ENVIRONMENT=production
+      - DEPLOYMENT_MODE=self_hosted
+      - DATABASE_URL=postgresql://mb_admin:${POSTGRES_PASSWORD}@db:5432/memorybrain
+      - READ_DATABASE_URL=postgresql://mb_admin:${POSTGRES_PASSWORD}@db:5432/memorybrain
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - MEMORY_ENCRYPTION_KEY=${MEMORY_ENCRYPTION_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - MEMORYBRAIN_LICENSE_KEY=${MEMORYBRAIN_LICENSE_KEY:-}
+      - RATE_LIMIT_DEFAULT_RPM=${RATE_LIMIT_DEFAULT_RPM:-120}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/healthz/liveness || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - memorybrain-internal
+
+  # -----------------------------------------------------------------------------------
+  # 2. PostgreSQL 16 with pgvector Extension
+  # -----------------------------------------------------------------------------------
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: memorybrain-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: memorybrain
+      POSTGRES_USER: mb_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mb_admin -d memorybrain"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - memorybrain-internal
+
+  # -----------------------------------------------------------------------------------
+  # 3. Redis 7 with Append-Only File (AOF) Persistence
+  # -----------------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: memorybrain-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - memorybrain-internal
+
+  # -----------------------------------------------------------------------------------
+  # 4. Nginx Reverse Proxy with SSL Termination & SSE/WebSocket Support
+  # -----------------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: memorybrain-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - api
+    networks:
+      - memorybrain-internal
+
+  # -----------------------------------------------------------------------------------
+  # 5. Let's Encrypt Certbot Automated SSL Certificate Renewal
+  # -----------------------------------------------------------------------------------
+  certbot:
+    image: certbot/certbot:v2.8.0
+    container_name: memorybrain-certbot
+    restart: unless-stopped
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+volumes:
+  pgdata:
+    name: memorybrain_postgres_data
+  redisdata:
+    name: memorybrain_redis_data
+
+networks:
+  memorybrain-internal:
+    name: memorybrain-internal

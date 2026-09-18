@@ -1,0 +1,67 @@
+name: MemoryBrain CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Run Test & Security Verification Suite
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: memorybrain_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Production Verification Tests
+        env:
+          DATABASE_URL: sqlite:///./ci_test.db
+          REDIS_URL: redis://localhost:6379/0
+          MEMORY_ENCRYPTION_KEY: v_s4K3-x1g_bS9c6vT7rU9yP8wL4zM2aN0oP3eR6tY8=
+        run: |
+          python tests/test_production_lifecycle.py
+          python tests/test_tenant_isolation_leak_proof.py
+          python tests/test_resilience_circuit_breaker.py
+          python tests/test_benchmark_evaluation.py
+
+      - name: Verify Docker Build
+        run: |
+          docker build -t memorybrain:latest .

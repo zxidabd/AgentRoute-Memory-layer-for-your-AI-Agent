@@ -1,0 +1,29 @@
+{
+  "name": "@memorybrain/sdk",
+  "version": "1.0.0",
+  "description": "Enterprise Long-Term Memory Layer for AI Agents",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test"
+  },
+  "keywords": [
+    "memory",
+    "ai",
+    "agents",
+    "llm",
+    "long-term-memory",
+    "ebbinghaus",
+    "embeddings"
+  ],
+  "author": "MemoryBrain Team <support@memorybrain.ai>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,42 @@
+﻿---
+title: SOC 2 Compliance Overview & Trust Portal
+description: Information on MemoryBrain's SOC 2 Type I certification, Type II observation roadmap, and continuous security.
+---
+
+# Enterprise Trust & SOC 2 Compliance
+
+MemoryBrain is engineered to meet the highest standards of data security, operational reliability, and tenant confidentiality expected by enterprise organizations.
+
+---
+
+## 1. SOC 2 Certification Roadmap
+
+`
+  ┌─────────────────────────┐          ┌──────────────────────────┐          ┌─────────────────────────┐
+  │   1. CONTROLS DEPLOYED   │  ─────>  │   2. SOC 2 TYPE I AUDIT  │  ─────>  │  3. TYPE II OBSERVATION │
+  │   (AES-256, RBAC, WAF,  │          │   (Point-in-Time Design  │          │  (3-6 Month Window via  │
+  │    Vanta Automated Mon) │          │    CPA Attestation)      │          │   AICPA-Accredited CPA) │
+  └─────────────────────────┘          └──────────────────────────┘          └─────────────────────────┘
+`
+
+- **SOC 2 Type I:** Confirms that MemoryBrain's security controls are designed and implemented in accordance with the AICPA Trust Services Criteria.
+- **SOC 2 Type II:** Validates the continuous operational effectiveness of those controls over an extended 3–6 month observation period.
+
+---
+
+## 2. Core Trust Criteria Supported
+
+| Criteria | MemoryBrain Safeguards |
+|---|---|
+| **Security (Common Criteria)** | Three-tier RBAC (owner, developer, iewer), SHA-256 hashed API keys (mb_{env}_{rand32}), Cloudflare DDoS mitigation, automated vulnerability scanning. |
+| **Confidentiality** | Strict multi-tenant logical partitioning by org_id, AES-256-Fernet envelope encryption at rest, TLS 1.3 in transit. |
+| **Processing Integrity** | Immutable audit versions ledger (memory_versions), idempotent billing meter submissions, RFC 7807 error responses. |
+| **Availability** | Dead-letter queue (DLQ), circuit breaker pattern, automated health probes, high-availability PostgreSQL with read replicas. |
+| **Privacy** | Self-serve GDPR Right to be Forgotten (DELETE /v1/users/{user_id}), compliance data export, comprehensive DPA with Standard Contractual Clauses. |
+
+---
+
+## 3. Requesting Compliance Evidence
+Enterprise prospects evaluating MemoryBrain may request our **SOC 2 Type I Report**, **Security Whitepaper**, and signed **Data Processing Agreement** directly from our trust portal or by contacting:
+
+📧 **compliance@memorybrain.ai**

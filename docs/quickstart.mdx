@@ -1,0 +1,158 @@
+---
+title: "Quickstart"
+description: "Give your AI agent persistent long-term memory in under 3 minutes."
+---
+
+## 1. Install the SDK
+
+Install the official client for your language:
+
+<CodeGroup>
+
+```bash Python
+pip install memorybrain
+```
+
+```bash TypeScript / Node
+npm install @memorybrain/sdk
+```
+
+</CodeGroup>
+
+---
+
+## 2. Get Your API Key
+
+1. Head over to the [MemoryBrain Dashboard](https://memorybrain.ai/dashboard).
+2. Create or select a Project (e.g. `SupportBot-Prod`).
+3. Click **"+ Generate API Key"** to obtain your `mb_live_...` or `mb_dev_...` key.
+4. Export it to your terminal:
+
+```bash
+export MEMORYBRAIN_API_KEY="mb_live_your_api_key_here"
+```
+
+---
+
+## 3. Store and Recall Memory (2-Line Quickstart)
+
+<CodeGroup>
+
+```python Python
+from memorybrain import MemoryBrain
+
+mb = MemoryBrain() # Reads MEMORYBRAIN_API_KEY from environment
+
+# 1. Store a memory
+mb.store(user_id="u123", content="User prefers responses in bullet points and uses TypeScript.")
+
+# 2. Recall memory before answering (< 25ms)
+result = mb.recall(user_id="u123", query="formatting preference")
+print(result["context"])
+```
+
+```typescript TypeScript
+import { MemoryBrain } from "@memorybrain/sdk";
+
+const mb = new MemoryBrain(); // Reads process.env.MEMORYBRAIN_API_KEY
+
+// 1. Store a memory
+await mb.store({
+  userId: "u123",
+  content: "User prefers responses in bullet points and uses TypeScript."
+});
+
+// 2. Recall memory before answering (< 25ms)
+const result = await mb.recall({
+  userId: "u123",
+  query: "formatting preference"
+});
+
+console.log(result.context);
+```
+
+</CodeGroup>
+
+---
+
+## 4. Inject into Your LLM System Prompt
+
+Inject the recalled `context` directly into your model:
+
+<CodeGroup>
+
+```python OpenAI (Python)
+from openai import OpenAI
+from memorybrain import MemoryBrain
+
+openai_client = OpenAI()
+mb = MemoryBrain()
+
+user_id = "user_42"
+user_message = "What tech stack did we pick for the frontend?"
+
+# 1. Recall relevant memories
+memory = mb.recall(user_id=user_id, query=user_message)
+
+# 2. Inject context into system prompt
+response = openai_client.chat.completions.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": f"You are a helpful assistant.\nContext:\n{memory['context']}"},
+        {"role": "user", "content": user_message}
+    ]
+)
+assistant_reply = response.choices[0].message.content
+
+# 3. Save turn to memory
+mb.store(user_id=user_id, messages=[
+    {"role": "user", "content": user_message},
+    {"role": "assistant", "content": assistant_reply}
+])
+
+print(assistant_reply)
+```
+
+```typescript OpenAI (TypeScript)
+import OpenAI from "openai";
+import { MemoryBrain } from "@memorybrain/sdk";
+
+const openai = new OpenAI();
+const mb = new MemoryBrain();
+
+const userId = "user_42";
+const userMessage = "What tech stack did we pick for the frontend?";
+
+// 1. Recall relevant memories
+const memory = await mb.recall({ userId, query: userMessage });
+
+// 2. Inject context into system prompt
+const response = await openai.chat.completions.create({
+  model: "gpt-4o",
+  messages: [
+    { role: "system", content: `You are a helpful assistant.\nContext:\n${memory.context}` },
+    { role: "user", content: userMessage }
+  ]
+});
+const reply = response.choices[0].message.content;
+
+// 3. Save turn to memory
+await mb.store({
+  userId,
+  messages: [
+    { role: "user", content: userMessage },
+    { role: "assistant", content: reply }
+  ]
+});
+
+console.log(reply);
+```
+
+</CodeGroup>
+
+---
+
+## Next Steps
+- Explore our [OpenAI Assistants Guide](/guides/openai-assistants)
+- Check out the [LangChain Integration](/guides/langchain)
+- Connect [Claude Desktop with our MCP Server](/guides/claude)

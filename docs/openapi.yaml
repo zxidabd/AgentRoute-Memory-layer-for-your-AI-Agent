@@ -1,0 +1,412 @@
+openapi: 3.1.0
+info:
+  title: MemoryBrain Platform API
+  version: 1.0.0
+  description: |
+    Enterprise-grade, high-performance Long-Term Memory Layer for AI Agents.
+    Provides sub-25ms semantic context recall, automated fact extraction, bi-temporal lifecycle,
+    multi-tenant isolation, and Ebbinghaus forgetting decay.
+servers:
+  - url: https://api.memorybrain.ai
+    description: Production Cloud API
+  - url: http://localhost:8000
+    description: Local Development Engine
+
+security:
+  - BearerAuth: []
+
+paths:
+  /v1/memories:
+    post:
+      summary: Ingest conversation turns or facts (Store)
+      description: |
+        Ingests conversation turns asynchronously into long-term memory.
+        Scrubs PII, extracts semantic facts, computes vector embeddings, and automatically resolves contradictions.
+      operationId: storeMemories
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngestMemoryRequest'
+      responses:
+        '202':
+          description: Ingestion job accepted into background worker fleet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestJobResponse'
+        '401':
+          $ref: '#/components/responses/401Unauthorized'
+        '429':
+          $ref: '#/components/responses/429QuotaExceeded'
+        '500':
+          $ref: '#/components/responses/500ServerError'
+
+    get:
+      summary: List memories with cursor pagination
+      description: Lists active or historical memories for a user, filtered by category and status.
+      operationId: listMemories
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Target user identifier
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [FACT, PREFERENCE, DECISION, INSTRUCTION]
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ACTIVE, SUPERSEDED, SOFT_DELETED]
+            default: ACTIVE
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated list of memories
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMemories'
+        '401':
+          $ref: '#/components/responses/401Unauthorized'
+
+  /v1/context:
+    post:
+      summary: Retrieve ranked prompt context (Recall)
+      description: |
+        Primary Agent Context Injection endpoint (< 25ms).
+        Scores memories using multi-factor ranking (semantic similarity, Ebbinghaus recency decay, importance),
+        and strictly clamps the injected text to the requested token limit.
+      operationId: recallContext
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchMemoryRequest'
+      responses:
+        '200':
+          description: Ranked context response ready for LLM prompt injection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextResponse'
+        '401':
+          $ref: '#/components/responses/401Unauthorized'
+        '429':
+          $ref: '#/components/responses/429QuotaExceeded'
+
+  /v1/memories/{memory_id}:
+    get:
+      summary: Get single memory with version ledger
+      description: Inspects memory statement, provenance, confidence scores, and historical audit versions.
+      operationId: getMemoryDetail
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: memory_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Memory record detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryDetailResponse'
+        '404':
+          description: Memory not found
+
+    delete:
+      summary: Soft-delete or permanently purge a memory
+      description: |
+        Removes a memory from active context.
+        Default: Soft-deletes (recoverable within 30 days). Pass `purge=true` for irreversible deletion.
+      operationId: deleteMemory
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: memory_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: purge
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Memory deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  memory_id:
+                    type: string
+                  type:
+                    type: string
+        '404':
+          description: Memory not found
+
+  /v1/users/{user_id}/memories:
+    delete:
+      summary: GDPR Complete User Memory Wipe
+      description: Permanently wipes all memories associated with an end-user.
+      operationId: wipeUserMemories
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User memories wiped
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  deleted_count:
+                    type: integer
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: mb_{env}_{random32}
+      description: "Project-scoped API key starting with mb_ (e.g. mb_prod_..., mb_dev_...)"
+
+  schemas:
+    ChatMessage:
+      type: object
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+
+    IngestMemoryRequest:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          type: string
+          description: Stable identifier of the end user or agent
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+          description: Conversation turns to extract facts from
+        statement:
+          type: string
+          description: Direct fact or preference statement to store immediately
+        category:
+          type: string
+          enum: [FACT, PREFERENCE, DECISION, INSTRUCTION]
+          default: FACT
+        metadata:
+          type: object
+          additionalProperties: true
+
+    IngestJobResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+        status:
+          type: string
+          example: queued
+        user_id:
+          type: string
+        message:
+          type: string
+
+    SearchMemoryRequest:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          type: string
+        query:
+          type: string
+          description: Natural language query to retrieve relevant memories for
+        limit:
+          type: integer
+          default: 5
+        token_limit:
+          type: integer
+          default: 300
+
+    ContextResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        context:
+          type: string
+          description: Formatted string ready to inject directly into LLM system prompt
+        token_count:
+          type: integer
+        memory_count:
+          type: integer
+        latency_ms:
+          type: number
+
+    MemoryItem:
+      type: object
+      properties:
+        id:
+          type: string
+        statement:
+          type: string
+        category:
+          type: string
+        status:
+          type: string
+        importance_score:
+          type: number
+        created_at:
+          type: string
+
+    PaginatedMemories:
+      type: object
+      properties:
+        memories:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryItem'
+        total_count:
+          type: integer
+        has_more:
+          type: boolean
+        next_cursor:
+          type: string
+          nullable: true
+
+    MemoryDetailResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        statement:
+          type: string
+        category:
+          type: string
+        status:
+          type: string
+        version:
+          type: integer
+        importance_score:
+          type: number
+        created_at:
+          type: string
+        versions:
+          type: array
+          items:
+            type: object
+            properties:
+              version_number:
+                type: integer
+              statement:
+                type: string
+              reason:
+                type: string
+              created_at:
+                type: string
+
+    ErrorEnvelope:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+        meta:
+          type: object
+          properties:
+            request_id:
+              type: string
+            timestamp:
+              type: string
+
+  responses:
+    401Unauthorized:
+      description: Authentication failed. Invalid, revoked, or missing API key.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            error:
+              code: AUTH_ERROR
+              message: "Invalid, expired, or revoked API key."
+
+    429QuotaExceeded:
+      description: Monthly request quota or active memory cap exceeded.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            error:
+              code: QUOTA_EXCEEDED
+              message: "Memory limit reached for STARTER tier. Please upgrade to GROWTH or enable overages."
+
+    500ServerError:
+      description: Internal server error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'

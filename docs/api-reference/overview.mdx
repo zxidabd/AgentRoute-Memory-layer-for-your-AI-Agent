@@ -1,0 +1,60 @@
+---
+title: "API Overview"
+description: "Authentication, base URLs, error codes, and rate limits for the MemoryBrain REST API."
+---
+
+## Base URLs
+
+| Environment | URL |
+|---|---|
+| **Production Cloud** | `https://api.memorybrain.ai` |
+| **Local Development** | `http://localhost:8000` |
+
+---
+
+## Authentication
+
+All API requests must include your project-scoped API key in the `Authorization` header:
+
+```http
+Authorization: Bearer mb_live_1234567890abcdef...
+```
+
+API keys can be generated in the [MemoryBrain Dashboard](https://memorybrain.ai/dashboard) and follow the format `mb_{env}_{random32}` (e.g. `mb_prod_...`, `mb_dev_...`, `mb_staging_...`).
+
+---
+
+## Error Handling
+
+MemoryBrain returns standardized RFC 7807 JSON error responses:
+
+```json
+{
+  "error": {
+    "code": "QUOTA_EXCEEDED",
+    "message": "Memory limit reached for STARTER tier. Please upgrade to GROWTH or enable overages."
+  },
+  "meta": {
+    "request_id": "req_8f1a2b3c4d5e",
+    "timestamp": "1726214400.123",
+    "path": "/v1/memories"
+  }
+}
+```
+
+### Standard Error Codes
+
+| HTTP Status | Error Code | Description |
+|---|---|---|
+| **401 Unauthorized** | `AUTH_ERROR` | Missing, invalid, expired, or revoked API key. |
+| **403 Forbidden** | `PERMISSION_DENIED` | Key role (e.g. `Viewer`) does not have permission for this endpoint. |
+| **404 Not Found** | `NOT_FOUND` | The specified memory ID, project, or user does not exist. |
+| **429 Too Many Requests** | `QUOTA_EXCEEDED` | Monthly plan quota or active memory cap exceeded. |
+| **429 Too Many Requests** | `RATE_LIMIT_EXCEEDED` | Requests per minute (RPM) exceeded. Client should back off. |
+| **500 Server Error** | `SERVER_ERROR` | Unexpected internal engine error. Our team is alerted automatically. |
+
+---
+
+## Interactive Playground
+
+You can test any endpoint live using the **"Try it"** playground panel on any API reference page by entering your test-mode API key (`mb_test_...` or `mb_dev_...`).

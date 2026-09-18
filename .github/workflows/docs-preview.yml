@@ -1,0 +1,27 @@
+name: Docs Preview and Contract Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+  pull_request:
+    paths:
+      - 'docs/**'
+
+jobs:
+  validate-docs:
+    name: Validate Mintlify Docs & OpenAPI Contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate OpenAPI spec syntax
+        run: |
+          npx @redocly/cli lint docs/openapi.yaml

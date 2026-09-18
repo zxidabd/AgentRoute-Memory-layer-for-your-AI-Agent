@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memorybrain"
+version = "1.0.0"
+authors = [
+  { name = "MemoryBrain Team", email = "support@memorybrain.ai" }
+]
+description = "Enterprise Long-Term Memory Layer for AI Agents"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = []
+
+[project.urls]
+"Homepage" = "https://memorybrain.ai"
+"Documentation" = "https://docs.memorybrain.ai"
+"Bug Tracker" = "https://github.com/memorybrain/memorybrain-python/issues"

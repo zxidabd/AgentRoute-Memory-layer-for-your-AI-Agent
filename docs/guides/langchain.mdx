@@ -1,0 +1,73 @@
+---
+title: "LangChain Integration"
+description: "Seamlessly plug MemoryBrain into LangChain chains and agents."
+---
+
+## Overview
+
+You can connect MemoryBrain directly into LangChain's Expression Language (LCEL) or custom memory components. Unlike in-memory buffers or local vector stores, MemoryBrain offloads extraction, bi-temporal deduplication, and decay ranking to a managed cloud layer.
+
+---
+
+## LangChain Integration Code
+
+```python
+import os
+from typing import Dict, Any, List
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables import RunnablePassthrough
+from langchain_openai import ChatOpenAI
+from memorybrain import MemoryBrain
+
+class MemoryBrainContextRetriever:
+    """Retrieves relevant user memories for LangChain LCEL chains."""
+
+    def __init__(self, api_key: str = None):
+        self.mb = MemoryBrain(api_key=api_key or os.environ["MEMORYBRAIN_API_KEY"])
+
+    def get_memory_context(self, input_dict: Dict[str, Any]) -> str:
+        user_id = input_dict.get("user_id", "default_user")
+        query = input_dict.get("question", "")
+        res = self.mb.recall(user_id=user_id, query=query, limit=5)
+        return res.get("context", "")
+
+    def save_turn(self, user_id: str, user_msg: str, ai_msg: str):
+        self.mb.store(
+            user_id=user_id,
+            messages=[
+                {"role": "user", "content": user_msg},
+                {"role": "assistant", "content": ai_msg}
+            ]
+        )
+
+
+# Setup LangChain LCEL Pipeline
+mb_retriever = MemoryBrainContextRetriever()
+llm = ChatOpenAI(model="gpt-4o", temperature=0)
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are an AI engineer. Use this user memory context when answering:\n{memory_context}"),
+    ("user", "{question}")
+])
+
+chain = (
+    RunnablePassthrough.assign(memory_context=mb_retriever.get_memory_context)
+    | prompt
+    | llm
+)
+
+# Execution
+user = "developer_sarah"
+question = "Which database did we decide to use for our vector store?"
+
+# Run query
+output = chain.invoke({"user_id": user, "question": question})
+print(output.content)
+
+# Store response in memory
+mb_retriever.save_turn(user_id=user, user_msg=question, ai_msg=output.content)
+```
+
+## Why Use MemoryBrain with LangChain?
+- **No vector database infrastructure to manage**: No need to configure local pgvector, Chroma, or Pinecone instances.
+- **Cross-session persistence**: The memories persist indefinitely across app restarts and serverless function cold starts.

@@ -1,0 +1,86 @@
+# Full Production Stack for MemoryBrain Platform
+version: '3.8'
+
+services:
+  # 1. FastAPI Application Service
+  api:
+    build: .
+    container_name: memorybrain_api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/memorybrain
+      - REDIS_URL=redis://redis:6379/0
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - ENVIRONMENT=production
+      - RATE_LIMIT_DEFAULT_RPM=300
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+
+  # 2. Async Background Extraction Worker Fleet
+  worker:
+    build: .
+    container_name: memorybrain_worker
+    command: ["python", "-m", "agent_memory.queue.worker"]
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/memorybrain
+      - REDIS_URL=redis://redis:6379/0
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+
+  # 3. PostgreSQL 16 + pgvector Database
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: memorybrain_postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=memorybrain
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d memorybrain"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  # 4. Redis 7 Alpine (Queue, Semantic Cache, Rate Limiting)
+  redis:
+    image: redis:7-alpine
+    container_name: memorybrain_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: always
+
+  # 5. Prometheus Monitoring & Metrics Scraper
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: memorybrain_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    restart: always
+
+volumes:
+  pgdata:
+  redisdata:
