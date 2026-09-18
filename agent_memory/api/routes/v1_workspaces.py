@@ -760,53 +760,34 @@ def self_serve_login(
 
     if payload.email:
         clean_email = payload.email.strip().lower()
+        if not payload.password:
+            raise HTTPException(status_code=400, detail="Password is required to sign in.")
+
         user = db.query(UserAccount).filter(UserAccount.email == clean_email).first()
-        
-        # Verify password if user account exists
-        if user and payload.password:
-            if not verify_password(user.password_hash, payload.password):
-                raise HTTPException(status_code=401, detail="Incorrect email or password.")
-            if not user.is_verified:
-                return {
-                    "status": "unverified",
-                    "email": clean_email,
-                    "message": "Please verify your email address before logging in."
-                }
-        elif user and not payload.password:
-            raise HTTPException(status_code=400, detail="Password is required to log in.")
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail="No account found with this email. Please sign up to create your workspace."
+            )
+
+        if not verify_password(user.password_hash, payload.password):
+            raise HTTPException(status_code=401, detail="Incorrect email or password.")
+
+        if not user.is_verified:
+            return {
+                "status": "unverified",
+                "email": clean_email,
+                "message": "Please verify your email address before logging in."
+            }
 
         mem = db.query(Membership).filter(Membership.email.ilike(clean_email)).first()
-        formatted_name = user.name if (user and user.name) else (" ".join([part.capitalize() for part in clean_email.split('@')[0].replace('.', ' ').replace('_', ' ').replace('-', ' ').split()]) or "Developer")
         if not mem:
-            org = db.query(Organization).first()
-            if not org:
-                org = Organization(
-                    id="org_default_dev",
-                    name="My Workspace",
-                    slug="my-workspace",
-                    tier="growth"
-                )
-                db.add(org)
-                db.commit()
-
-            proj = db.query(Project).filter(Project.org_id == org.id).first()
-            if not proj:
-                proj = Project(id="proj_prod", org_id=org.id, name="SupportBot", environment="prod")
-                db.add(proj)
-                db.commit()
-
-            mem = Membership(
-                id=f"mem_{secrets.token_hex(4)}",
-                org_id=org.id,
-                clerk_user_id=user.id if user else f"user_{secrets.token_hex(4)}",
-                name=formatted_name,
-                email=clean_email,
-                role="owner"
+            raise HTTPException(
+                status_code=403,
+                detail="No active workspace found for this account. Please sign up to create a workspace."
             )
-            db.add(mem)
-            db.commit()
 
-        user_name = mem.name or formatted_name
+        user_name = user.name or mem.name or "Developer"
         org = db.query(Organization).filter(Organization.id == mem.org_id).first()
         proj = db.query(Project).filter(Project.org_id == org.id).first() if org else None
         key_res = APIKeyService.generate_api_key(
@@ -819,6 +800,7 @@ def self_serve_login(
         )
         return {
             "status": "authenticated",
+            "auth_type": "email_password",
             "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None,
             "project_id": proj.id if proj else None,
             "role": mem.role,
@@ -826,41 +808,10 @@ def self_serve_login(
             "user": {"name": user_name, "email": clean_email, "role": mem.role}
         }
 
-    # Instant Demo Workspace Login
-    demo_org = db.query(Organization).first()
-    if not demo_org:
-        demo_org = Organization(
-            id="org_default_demo",
-            name="Acme AI Technologies",
-            slug="acme-ai-demo",
-            tier="growth"
-        )
-        db.add(demo_org)
-        db.commit()
-
-    demo_proj = db.query(Project).filter(Project.org_id == demo_org.id).first()
-    if not demo_proj:
-        demo_proj = Project(id="proj_default_demo", org_id=demo_org.id, name="SupportBot", environment="prod")
-        db.add(demo_proj)
-        db.commit()
-
-    key_res = APIKeyService.generate_api_key(
-        db=db,
-        org_id=demo_org.id,
-        name="Instant Demo Key",
-        role="owner",
-        project_id=demo_proj.id,
-        environment="prod"
+    raise HTTPException(
+        status_code=400,
+        detail="Please enter your work email and password, or provide an active API key."
     )
-
-    return {
-        "status": "authenticated",
-        "auth_type": "demo",
-        "org": {"id": demo_org.id, "name": demo_org.name, "tier": demo_org.tier},
-        "project_id": demo_proj.id,
-        "api_key": key_res["api_key"],
-        "user": {"name": "Demo Founder", "email": "founder@acme.ai", "role": "owner"}
-    }
 
 
 @router.get("/v1/auth/config", summary="Get Public Auth Configuration")

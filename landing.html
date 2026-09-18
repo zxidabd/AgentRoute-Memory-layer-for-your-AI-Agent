@@ -3079,10 +3079,17 @@ hits = mb.assets.recall(
 
     async function handleLogin(e) {
       e.preventDefault();
-      const email = document.getElementById('login-email').value;
+      const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
-      const apiKey = document.getElementById('login-key').value;
+      const apiKey = document.getElementById('login-key').value.trim();
       const btn = document.getElementById('btn-submit-login');
+
+      if (!apiKey && !password) {
+        alert('Please enter your account password to sign in.');
+        document.getElementById('login-password').focus();
+        return;
+      }
+
       btn.innerText = 'Signing In...';
       btn.disabled = true;
 
@@ -3113,34 +3120,13 @@ hits = mb.assets.recall(
           }
           window.location.href = '/dashboard';
         } else {
-          alert('Login failed: ' + (data.detail || 'Invalid credentials'));
+          alert('Login failed: ' + (data.detail || 'Incorrect email or password.'));
         }
       } catch (err) {
-        window.location.href = '/dashboard';
+        alert('Authentication error: Unable to contact server. Please try again.');
       } finally {
         btn.innerText = 'Sign In to Console';
         btn.disabled = false;
-      }
-    }
-
-    async function handleInstantDemo() {
-      try {
-        const resp = await fetch('/v1/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({})
-        });
-        const data = await resp.json();
-        if (data.api_key) {
-          localStorage.setItem('mb_api_key', data.api_key);
-        }
-        if (data.user) {
-          localStorage.setItem('mb_user_name', data.user.name);
-          localStorage.setItem('mb_user_email', data.user.email);
-        }
-        window.location.href = '/dashboard';
-      } catch (err) {
-        window.location.href = '/dashboard';
       }
     }
 

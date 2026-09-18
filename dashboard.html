@@ -1701,8 +1701,14 @@ You can ask me to explain how our architecture is configured, query my capabilit
       });
     }
 
-    // Dynamic Logged-in User Profile Injection
+    // Dynamic Logged-in User Profile Injection & Auth Guard
     function initUserProfile() {
+      const activeKey = localStorage.getItem('mb_api_key');
+      if (!activeKey) {
+        window.location.href = '/landing';
+        return;
+      }
+
       const userName = localStorage.getItem('mb_user_name') || 'Developer';
       const userEmail = localStorage.getItem('mb_user_email') || 'developer@company.internal';
       const userInitial = userName.trim().charAt(0).toUpperCase() || 'D';
