@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-13T03:48:08.723482+00:00",
+  "timestamp": "2026-09-19T20:43:05.136034+00:00",
   "status": "PASS",
   "checks": {
     "gtm_assets": {
@@ -14,21 +14,21 @@
     }
   },
   "visitor_simulation": {
-    "org_created": "org_f0bb6e2b",
-    "project_created": "proj_f0bb6e2b",
-    "api_key_prefix": "mb_prod_OS..."
+    "org_created": "org_bcfb5a70",
+    "project_created": "proj_bcfb5a70",
+    "api_key_prefix": "mb_prod_WQ..."
   },
   "latency_metrics": {
-    "store_latency_ms": 46.27,
-    "recall_latency_ms": 14.76,
+    "store_latency_ms": 49.63,
+    "recall_latency_ms": 15.92,
     "sla_threshold_ms": 50.0,
     "within_sla": true
   },
   "gtm_baseline_summary": {
-    "total_organizations": 46,
-    "activated_organizations": 26,
-    "activation_rate_pct": 56.52,
-    "paid_conversion_rate_pct": 67.39
+    "total_organizations": 60,
+    "activated_organizations": 31,
+    "activation_rate_pct": 51.67,
+    "paid_conversion_rate_pct": 63.33
   },
   "sla_certification": "Step 6 Go-to-Market Readiness Certified (Dry-Run Pass)"
 }

@@ -2,6 +2,10 @@
 
 import base64
 import json
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from fastapi.testclient import TestClient
 from agent_memory.api.server import app
 from agent_memory.database import get_db_session

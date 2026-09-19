@@ -1,5 +1,9 @@
 """Security test verifying that login without signup, wrong password, or unverified email is blocked."""
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from fastapi.testclient import TestClient
 from agent_memory.api.server import app
 from agent_memory.database import get_db_session
@@ -18,11 +22,22 @@ def test_login_security_gates():
         unverified_email = "unverified.user@company.com"
 
         # Cleanup prior test data
+        import secrets
+        db.query(Membership).filter(Membership.email.in_([verified_email, unverified_email])).delete(synchronize_session=False)
+        db.query(Project).filter(Project.name == "Security Test Agent").delete(synchronize_session=False)
+        db.query(Organization).filter(Organization.name == "Security Test Org").delete(synchronize_session=False)
         db.query(UserAccount).filter(UserAccount.email.in_([verified_email, unverified_email])).delete(synchronize_session=False)
         db.commit()
 
+        test_suffix = secrets.token_hex(4)
+        org_id = f"org_sec_{test_suffix}"
+        org_slug = f"sec-test-{test_suffix}"
+        proj_id = f"proj_sec_{test_suffix}"
+        mem_id = f"mem_sec_{test_suffix}"
+        u_id = f"usr_sec_{test_suffix}"
+
         u_verified = UserAccount(
-            id="usr_test_verified_sec",
+            id=u_id,
             email=verified_email,
             name="Verified Test",
             password_hash=hash_password("Secret123!"),
@@ -32,11 +47,11 @@ def test_login_security_gates():
         )
         db.add(u_verified)
 
-        org = Organization(id="org_sec_test", name="Security Test Org", slug="sec-test", tier="starter")
+        org = Organization(id=org_id, name="Security Test Org", slug=org_slug, tier="starter")
         db.add(org)
-        proj = Project(id="proj_sec_test", org_id=org.id, name="Agent", environment="prod")
+        proj = Project(id=proj_id, org_id=org.id, name="Security Test Agent", environment="prod")
         db.add(proj)
-        mem = Membership(id="mem_sec_test", org_id=org.id, clerk_user_id=u_verified.id, email=verified_email, role="owner")
+        mem = Membership(id=mem_id, org_id=org.id, clerk_user_id=u_verified.id, email=verified_email, role="owner")
         db.add(mem)
 
         u_unverified = UserAccount(

@@ -27,6 +27,8 @@ TESTS = [
     ("Pillar 24 (Step 7): Post-Launch Operations, Churn Analytics & Foundation", ROOT_DIR / "tests" / "test_pillar24_post_launch_ops.py"),
     ("Pillar 25 (Step 5 Addendum): Multi-Deployment Architecture (GCP + AWS + Self-Hosted)", ROOT_DIR / "tests" / "test_pillar25_multi_deployment.py"),
     ("Pillar 26: Enterprise Data Assets, Business Metrics & Lineage Context Graph", ROOT_DIR / "tests" / "test_pillar26_enterprise_data_assets.py"),
+    ("Auth Security: Strict Login Gate & Password Verification", ROOT_DIR / "tests" / "test_auth_security.py"),
+    ("OAuth Integration: Google Sign-In & Single Sign-On", ROOT_DIR / "tests" / "test_google_auth.py"),
 ]
 
 
