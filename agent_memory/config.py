@@ -75,7 +75,7 @@ class Settings(BaseSettings):
     smtp_password: str = os.getenv("SMTP_PASSWORD", "")
     smtp_server: str = os.getenv("SMTP_SERVER", "smtp.resend.com")
     smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
-    app_base_url: str = os.getenv("APP_BASE_URL", os.getenv("FRONTEND_URL", "https://agentroute-memory-layer-for-your-ai-agent.onrender.com"))
+    app_base_url: str = os.getenv("APP_BASE_URL", os.getenv("APP_BASE_URI", os.getenv("FRONTEND_URL", "https://agentroute-memory-layer-for-your-ai-agent.onrender.com")))
     support_email: str = os.getenv("SUPPORT_EMAIL", "support@agentroute.co")
 
     # Superuser Access Control
@@ -84,7 +84,7 @@ class Settings(BaseSettings):
     # Google OAuth / Identity Services (supports both standard and Google Cloud naming)
     google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", os.getenv("GOOGLE_OAUTH_CLIENT_ID", "761969834884-6e89s022cu4954ft8kjq5k0qiuvep8ka.apps.googleusercontent.com"))
     google_client_secret: str = os.getenv("GOOGLE_CLIENT_SECRET", os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", ""))
-    google_redirect_uri: str = os.getenv("GOOGLE_REDIRECT_URI", os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "https://agentroute-memory-layer-for-your-ai-agent.onrender.com/landing"))
+    google_redirect_uri: str = os.getenv("GOOGLE_REDIRECT_URI", os.getenv("GOOGLE_OAUTH_REDIRECT_URI", os.getenv("GOOGLE_OAUTH_REDIRECT_URL", "https://agentroute-memory-layer-for-your-ai-agent.onrender.com/landing")))
 
     # Memory Engine Hyperparameters
     decay_rate_lambda: float = 0.005  # Ebbinghaus decay per day
