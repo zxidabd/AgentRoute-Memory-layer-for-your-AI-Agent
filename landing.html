@@ -3412,7 +3412,7 @@ hits = mb.assets.recall(
           body: JSON.stringify({
             code: googleCode,
             state: googleState,
-            redirect_uri: window.location.origin + '/landing'
+            redirect_uri: urlParams.get('oauth_redirect_uri') || (window.location.origin + '/landing')
           })
         }).then(r => r.json()).then(data => {
           if (data.status === 'authenticated') {

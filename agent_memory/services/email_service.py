@@ -18,15 +18,18 @@ class EmailService:
 
     @classmethod
     def _get_from_header(cls) -> str:
-        from_email = settings.resend_from_email.strip() if settings.resend_from_email else "noreply@agentroute.co"
+        from_email = getattr(settings, "smtp_from_email", None) or (settings.resend_from_email.strip() if settings.resend_from_email else "abdullahzaid509@gmail.com")
         from_name = settings.smtp_from_name.strip() if settings.smtp_from_name else "AgentRoute-AI memory layer"
-        if "<" in from_email:
-            return from_email
+        server_host = (getattr(settings, "smtp_host", "") or settings.smtp_server or "").lower()
+        if "gmail.com" in server_host and "agentroute.co" in str(from_email).lower():
+            from_email = settings.smtp_username or "abdullahzaid509@gmail.com"
+        if "<" in str(from_email):
+            return str(from_email)
         return f"{from_name} <{from_email}>"
 
     @classmethod
     def _send_smtp_fallback(cls, to_email: str, subject: str, html_body: str) -> bool:
-        """Sends email via standard SMTP."""
+        """Sends email via standard SMTP (supporting Gmail SSL port 465 and TLS port 587)."""
         try:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
@@ -36,36 +39,56 @@ class EmailService:
             part = MIMEText(html_body, "html")
             msg.attach(part)
 
-            server_host = settings.smtp_server or "smtp.resend.com"
-            server_port = settings.smtp_port or 587
-            username = "resend" if "resend.com" in server_host else (settings.smtp_username or "resend")
+            server_host = getattr(settings, "smtp_host", None) or settings.smtp_server or "smtp.gmail.com"
+            server_port = int(settings.smtp_port or 465)
+            username = settings.smtp_username or getattr(settings, "smtp_from_email", None)
             password = settings.smtp_password or settings.resend_api_key
 
-            with smtplib.SMTP(server_host, server_port, timeout=10.0) as server:
-                server.starttls()
-                if password:
-                    server.login(username, password)
-                server.sendmail(msg["From"], [to_email], msg.as_string())
-            logger.info(f"Email successfully delivered to {to_email} via SMTP.")
+            # Clean envelope sender for SMTP MAIL FROM command
+            sender_addr = username if ("gmail.com" in server_host.lower() and username) else (getattr(settings, "smtp_from_email", None) or username)
+            if "<" in str(sender_addr) and ">" in str(sender_addr):
+                sender_addr = str(sender_addr).split("<")[1].split(">")[0].strip()
+
+            if server_port == 465:
+                with smtplib.SMTP_SSL(server_host, server_port, timeout=12.0) as server:
+                    if username and password:
+                        server.login(username, password)
+                    server.sendmail(sender_addr, [to_email], msg.as_string())
+            else:
+                with smtplib.SMTP(server_host, server_port, timeout=12.0) as server:
+                    server.starttls()
+                    if username and password:
+                        server.login(username, password)
+                    server.sendmail(sender_addr, [to_email], msg.as_string())
+
+            logger.info(f"Email successfully delivered to {to_email} via SMTP ({server_host}:{server_port}).")
             return True
         except Exception as e:
-            logger.warning(f"SMTP dispatch to {to_email} failed: {e}")
+            logger.warning(f"SMTP dispatch to {to_email} via {getattr(settings, 'smtp_host', 'smtp.gmail.com')} failed: {e}")
             return False
 
     @classmethod
     def _dispatch_email(cls, to_email: str, subject: str, html_body: str) -> bool:
-        """Attempts Resend REST API dispatch first; falls back to SMTP if configured."""
+        """Attempts Gmail SMTP first if configured; then Resend REST API; then fallback."""
         if settings.environment in ("testing", "test"):
             return True
 
+        # 1. If SMTP password / Gmail is configured, prioritize SMTP (requires NO custom domain!)
+        server_host = (getattr(settings, "smtp_host", "") or settings.smtp_server or "").lower()
+        if settings.smtp_password and ("gmail.com" in server_host or not settings.resend_api_key.startswith("re_")):
+            ok = cls._send_smtp_fallback(to_email, subject, html_body)
+            if ok:
+                return True
+
+        # 2. Try Resend REST API if key starts with re_
         api_key = settings.resend_api_key.strip() if settings.resend_api_key else ""
         from_header = cls._get_from_header()
-
-        # If it looks like a Resend API key (re_...), call Resend API
         if api_key.startswith("re_"):
             try:
+                # If custom domain agentroute.co is unverified on Resend, fallback to onboarding@resend.dev
+                resend_from = "AgentRoute <onboarding@resend.dev>" if "agentroute.co" in from_header else from_header
                 payload = {
-                    "from": from_header,
+                    "from": resend_from,
                     "to": [to_email],
                     "subject": subject,
                     "html": html_body
@@ -79,21 +102,20 @@ class EmailService:
                     if resp.status_code in (200, 201):
                         logger.info(f"Delivered email to {to_email} via Resend. ID: {resp.json().get('id')}")
                         return True
-                    elif resp.status_code in (403, 422) and "resend.dev" not in from_header:
-                        logger.warning(f"Custom domain unverified in Resend. Retrying with verified onboarding@resend.dev...")
+                    elif resp.status_code in (403, 422) and "resend.dev" not in resend_from:
                         payload["from"] = "AgentRoute <onboarding@resend.dev>"
                         retry_resp = client.post(cls.RESEND_API_URL, json=payload, headers=headers)
                         if retry_resp.status_code in (200, 201):
                             logger.info(f"Delivered email to {to_email} via Resend fallback. ID: {retry_resp.json().get('id')}")
                             return True
             except Exception as exc:
-                logger.warning(f"Resend HTTP request failed: {exc}, attempting SMTP fallback...")
+                logger.warning(f"Resend HTTP request failed: {exc}")
 
-        # Fallback to standard SMTP
+        # 3. Fallback to standard SMTP if not already attempted
         if settings.smtp_password:
             return cls._send_smtp_fallback(to_email, subject, html_body)
 
-        # Simulation mode for local dev when no keys set
+        # 4. Simulation mode for local dev when no keys set
         print(f"\n================ [EMAIL DEV SIMULATION] ================")
         print(f"To: {to_email}")
         print(f"Subject: {subject}")

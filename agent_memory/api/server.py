@@ -142,6 +142,19 @@ def serve_playground():
     return JSONResponse(status_code=404, content={"error": "playground.html not found"})
 
 
+@app.get("/auth/google/callback", include_in_schema=False)
+@app.get("/api/v1/auth/google/callback", include_in_schema=False)
+@app.get("/v1/auth/google/callback", include_in_schema=False)
+def google_oauth_callback_redirect(request: Request):
+    """Seamlessly forwards OAuth authorization code to /landing with original redirect_uri preserved."""
+    from fastapi.responses import RedirectResponse
+    from urllib.parse import urlencode
+    base_cb_url = str(request.url).split("?")[0]
+    query_dict = dict(request.query_params)
+    query_dict["oauth_redirect_uri"] = base_cb_url
+    return RedirectResponse(url=f"/landing?{urlencode(query_dict)}", status_code=303)
+
+
 @app.get("/landing", include_in_schema=False)
 @app.get("/", include_in_schema=False)
 def serve_landing_or_root(request: Request):
@@ -161,3 +174,4 @@ def serve_landing_or_root(request: Request):
         "docs": "/docs",
         "metrics": "/metrics"
     }
+
