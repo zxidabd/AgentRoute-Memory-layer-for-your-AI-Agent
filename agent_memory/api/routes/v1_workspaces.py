@@ -1455,10 +1455,11 @@ def logout(
 
 
 @router.get("/v1/auth/me", summary="Get Current Authenticated User Profile")
+@router.get("/api/v1/auth/me", summary="Get Current Authenticated User Profile (Alias)")
 def get_current_user(
     request: Request,
     db: Session = Depends(get_db_session)
-) -> Dict[str, Any]:
+):
     # 1. Try Authorization header first (JWT)
     auth_header = request.headers.get("authorization", "")
     if auth_header.startswith("Bearer "):
@@ -1470,6 +1471,7 @@ def get_current_user(
                 org = db.query(Organization).filter(Organization.id == payload.get("org_id")).first()
                 return {
                     "authenticated": True,
+                    "access_token": token,
                     "user": {
                         "id": user.id,
                         "email": user.email,
@@ -1480,6 +1482,41 @@ def get_current_user(
                     },
                     "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None
                 }
+
+    # 2. Try refresh token cookie (Remember Me / persistent session)
+    raw_token = request.cookies.get("mb_refresh_token")
+    if raw_token:
+        token_hash = hash_refresh_token(raw_token)
+        now = datetime.now(timezone.utc)
+        rt = db.query(RefreshToken).filter(
+            RefreshToken.token_hash == token_hash,
+            RefreshToken.revoked_at == None
+        ).first()
+        if rt:
+            exp = rt.expires_at if rt.expires_at.tzinfo else rt.expires_at.replace(tzinfo=timezone.utc)
+            if now <= exp:
+                user = db.query(UserAccount).filter(UserAccount.id == rt.user_id).first()
+                if user and user.is_verified:
+                    mem = db.query(Membership).filter(Membership.email.ilike(user.email)).first()
+                    org = db.query(Organization).filter(Organization.id == mem.org_id).first() if mem else None
+                    fresh_token = create_access_token(
+                        user_id=user.id,
+                        org_id=org.id if org else "",
+                        role=mem.role if mem else "owner"
+                    )
+                    return {
+                        "authenticated": True,
+                        "access_token": fresh_token,
+                        "user": {
+                            "id": user.id,
+                            "email": user.email,
+                            "name": user.name,
+                            "role": mem.role if mem else "owner",
+                            "email_verified": user.is_verified,
+                            "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None
+                        },
+                        "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None
+                    }
 
     # 2. Try X-API-Key or Bearer API key
     api_key_str = request.headers.get("x-api-key", "")

@@ -126,6 +126,20 @@ from fastapi.responses import JSONResponse, FileResponse
 LANDING_FILE = Path(__file__).resolve().parent.parent.parent / "landing.html"
 DASHBOARD_FILE = Path(__file__).resolve().parent.parent.parent / "dashboard.html"
 PLAYGROUND_FILE = Path(__file__).resolve().parent.parent.parent / "docs" / "playground.html"
+AUTH_FILE = Path(__file__).resolve().parent.parent.parent / "auth.html"
+
+
+@app.get("/login", include_in_schema=False)
+@app.get("/signin", include_in_schema=False)
+@app.get("/signup", include_in_schema=False)
+@app.get("/register", include_in_schema=False)
+@app.get("/auth", include_in_schema=False)
+def serve_auth():
+    if AUTH_FILE.exists():
+        return FileResponse(str(AUTH_FILE), media_type="text/html")
+    if LANDING_FILE.exists():
+        return FileResponse(str(LANDING_FILE), media_type="text/html")
+    return JSONResponse(status_code=404, content={"error": "auth.html not found"})
 
 
 @app.get("/dashboard", include_in_schema=False)
@@ -140,6 +154,7 @@ def serve_playground():
     if PLAYGROUND_FILE.exists():
         return FileResponse(str(PLAYGROUND_FILE), media_type="text/html")
     return JSONResponse(status_code=404, content={"error": "playground.html not found"})
+
 
 
 @app.get("/auth/google/callback", include_in_schema=False)

@@ -1957,7 +1957,7 @@ You can ask me to explain how our architecture is configured, query my capabilit
     }
 
     async function handleSignOut() {
-      if (confirm("Sign out of MemoryBrain console?")) {
+      if (confirm("Sign out of AgentRoute console?")) {
         // Revoke refresh token on server
         try {
           await fetch('/v1/auth/logout', {
@@ -1965,13 +1965,8 @@ You can ask me to explain how our architecture is configured, query my capabilit
             credentials: 'include'
           });
         } catch (e) { /* best-effort */ }
-        localStorage.removeItem('mb_api_key');
-        localStorage.removeItem('mb_access_token');
-        localStorage.removeItem('mb_org_id');
-        localStorage.removeItem('mb_user_name');
-        localStorage.removeItem('mb_user_email');
-        localStorage.removeItem('mb_is_super_user');
-        window.location.href = '/landing';
+        localStorage.clear();
+        window.location.href = '/login?logout=1';
       }
     }
 

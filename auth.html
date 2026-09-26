@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentRoute Memory | Sign In & Sign Up</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root {
+      --bg: #090D16;
+      --bg-card: rgba(15, 23, 42, 0.75);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-focus: #6366F1;
+      --accent: #6366F1;
+      --accent-hover: #4F46E5;
+      --cyan: #38BDF8;
+      --emerald: #10B981;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+      --danger: #EF4444;
+      --danger-bg: rgba(239, 68, 68, 0.1);
+      --success-bg: rgba(16, 185, 129, 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 85% 80%, rgba(56, 189, 248, 0.12) 0%, transparent 40%);
+    }
+
+    /* Top Nav */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      background: rgba(9, 13, 22, 0.6);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-main);
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #6366F1, #38BDF8);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 800;
+      font-size: 16px;
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+    }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--text-main); }
+
+    /* Main Container */
+    .auth-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 40px 24px;
+      align-items: center;
+      gap: 60px;
+    }
+
+    @media (max-width: 900px) {
+      .auth-layout {
+        grid-template-columns: 1fr;
+        gap: 32px;
+        padding: 24px 16px;
+      }
+      .hero-side { display: none !important; }
+    }
+
+    /* Left Hero / Brand Side */
+    .hero-side {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .badge-trial {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--cyan);
+      width: fit-content;
+    }
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--cyan);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--cyan);
+    }
+    .hero-title {
+      font-size: clamp(32px, 3.5vw, 44px);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+    }
+    .hero-title span {
+      background: linear-gradient(135deg, #A5B4FC, #38BDF8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-desc {
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+    .feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 12px;
+    }
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .feature-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--cyan);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .feature-text h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .feature-text p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Right Auth Card */
+    .card-wrapper {
+      position: relative;
+    }
+    .auth-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px 32px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(20px);
+    }
+    .auth-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 24px;
+      gap: 4px;
+    }
+    .tab-btn {
+      padding: 10px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+    }
+
+    /* Google Button */
+    .btn-google {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: #FFFFFF;
+      color: #111827;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .btn-google:hover {
+      background: #F8FAFC;
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: translateY(-1px);
+    }
+    .divider {
+      display: flex;
+      align-items: center;
+      margin: 20px 0;
+      color: var(--text-dim);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+    .divider span { padding: 0 12px; }
+
+    /* Form Fields */
+    .form-group {
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-group label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+    .input-field {
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-size: 14px;
+      transition: all 0.15s;
+    }
+    .input-field:focus {
+      outline: none;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+    .input-field::placeholder { color: var(--text-dim); }
+
+    .form-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    .remember-me {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .remember-me input { accent-color: var(--accent); }
+    .forgot-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .forgot-link:hover { text-decoration: underline; }
+
+    .btn-submit {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #6366F1, #4F46E5);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+    }
+    .btn-submit:hover:not(:disabled) {
+      background: linear-gradient(135deg, #4F46E5, #4338CA);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(99, 102, 241, 0.45);
+    }
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* Alerts and Feedback */
+    .alert-box {
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 18px;
+      display: none;
+    }
+    .alert-error {
+      background: var(--danger-bg);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #FCA5A5;
+    }
+    .alert-success {
+      background: var(--success-bg);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #6EE7B7;
+    }
+    .alert-info {
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #7DD3FC;
+    }
+
+    /* Verification OTP code styling */
+    .otp-input-large {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 28px;
+      letter-spacing: 10px;
+      text-align: center;
+      font-weight: 700;
+      color: var(--cyan);
+      background: rgba(11, 15, 23, 0.95);
+      border: 1px solid var(--cyan);
+      border-radius: 8px;
+      padding: 12px;
+      width: 100%;
+      margin: 16px 0;
+    }
+
+    /* Auto-redirect overlay */
+    #redirect-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 13, 22, 0.95);
+      z-index: 100;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 3px solid rgba(99, 102, 241, 0.2);
+      border-top-color: var(--cyan);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <!-- Instant Session Auto-Redirect Overlay -->
+  <div id="redirect-overlay">
+    <div class="spinner"></div>
+    <div style="font-size: 16px; font-weight: 600; color: #F8FAFC;" id="redirect-msg">Welcome back! Loading your workspace...</div>
+    <div style="font-size: 13px; color: #94A3B8;">Redirecting directly to dashboard...</div>
+  </div>
+
+  <!-- Header -->
+  <header class="top-bar">
+    <a href="/landing" class="brand">
+      <div class="brand-icon">AR</div>
+      <span>AgentRoute</span>
+    </a>
+    <div class="nav-links">
+      <a href="/landing">← Back to Overview</a>
+    </div>
+  </header>
+
+  <!-- Auth Layout -->
+  <div class="auth-layout">
+    
+    <!-- Hero / Value Prop Left Side -->
+    <div class="hero-side">
+      <div class="badge-trial">
+        <span class="badge-dot"></span>
+        3-Day Free Trial Included
+      </div>
+      <h1 class="hero-title">
+        The Long-Term Memory Layer for <span>Autonomous AI Agents</span>.
+      </h1>
+      <p class="hero-desc">
+        Store, index, and retrieve user preferences, cross-session facts, and fleet knowledge with sub-25ms hybrid vector recall.
+      </p>
+
+      <div class="feature-list">
+        <div class="feature-item">
+          <div class="feature-icon">⚡</div>
+          <div class="feature-text">
+            <h4>Sub-25ms Hybrid Semantic Recall</h4>
+            <p>HNSW pgvector indexing + BM25 keyword matching built for ultra-low latency prompt injection.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🧠</div>
+          <div class="feature-text">
+            <h4>Automatic Fact Extraction & Contradiction Resolution</h4>
+            <p>Background workers extract atomic facts and automatically supersede obsolete knowledge.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🔌</div>
+          <div class="feature-text">
+            <h4>Native MCP Server & SDKs</h4>
+            <p>Plug into Claude Desktop, Cursor, and Python/Node agents with zero configuration.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Side: Auth Box -->
+    <div class="card-wrapper">
+      <div class="auth-card">
+
+        <!-- Tabs -->
+        <div class="auth-tabs" id="auth-tabs-row">
+          <button type="button" class="tab-btn active" id="tab-signin" onclick="switchAuthMode('signin')">Sign In</button>
+          <button type="button" class="tab-btn" id="tab-signup" onclick="switchAuthMode('signup')">Create Account</button>
+        </div>
+
+        <!-- Global Alert Message -->
+        <div class="alert-box alert-error" id="auth-alert-error"></div>
+        <div class="alert-box alert-success" id="auth-alert-success"></div>
+        <div class="alert-box alert-info" id="auth-alert-info"></div>
+
+        <!-- 1. SIGN IN VIEW -->
+        <div id="view-signin">
+          <button type="button" class="btn-google" onclick="handleGoogleAuthClick('signin')">
+            <svg width="18" height="18" viewBox="0 0 18 18">
+              <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"/>
+              <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+              <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+              <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+            </svg>
+            <span>Continue with Google</span>
+          </button>
+
+          <div class="divider"><span>or sign in with email</span></div>
+
+          <form id="form-signin" onsubmit="handleSignInSubmit(event)">
+            <div class="form-group">
+              <label for="signin-email">Work Email</label>
+              <input type="email" id="signin-email" class="input-field" placeholder="alex@company.com" required autocomplete="email">
+            </div>
+            <div class="form-group">
+              <label for="signin-password">Password</label>
+              <input type="password" id="signin-password" class="input-field" placeholder="••••••••••••" required autocomplete="current-password">
+            </div>
+
+            <div class="form-row">
+              <label class="remember-me">
+                <input type="checkbox" id="signin-remember" checked>
+                <span>Remember me</span>
+              </label>
+              <a href="#" class="forgot-link" onclick="switchAuthMode('forgot', event)">Forgot password?</a>
+            </div>
+
+            <button type="submit" class="btn-submit" id="btn-signin-submit">Sign In to Dashboard</button>
+          </form>
+        </div>
+
+        <!-- 2. SIGN UP VIEW -->
+        <div id="view-signup" style="display: none;">
+          <button type="button" class="btn-google" onclick="handleGoogleAuthClick('signup')">
+            <svg width="18" height="18" viewBox="0 0 18 18">
+              <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"/>
+              <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+              <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+              <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+            </svg>
+            <span>Sign up with Google</span>
+          </button>
+
+          <div class="divider"><span>or register with email</span></div>
+
+          <form id="form-signup" onsubmit="handleSignUpSubmit(event)">
+            <div class="form-group">
+              <label for="signup-name">Full Name</label>
+              <input type="text" id="signup-name" class="input-field" placeholder="Alex Rivera" required autocomplete="name">
+            </div>
+            <div class="form-group">
+              <label for="signup-email">Work Email</label>
+              <input type="email" id="signup-email" class="input-field" placeholder="alex@company.com" required autocomplete="email">
+            </div>
+            <div class="form-group">
+              <label for="signup-password">Password (minimum 8 characters)</label>
+              <input type="password" id="signup-password" class="input-field" placeholder="••••••••••••" minlength="8" required autocomplete="new-password">
+            </div>
+
+            <button type="submit" class="btn-submit" id="btn-signup-submit">Start 3-Day Free Trial</button>
+            <div style="font-size: 12px; color: var(--text-dim); text-align: center; margin-top: 12px;">
+              No credit card required. Free workspace provisioned instantly.
+            </div>
+          </form>
+        </div>
+
+        <!-- 3. EMAIL VERIFICATION OTP VIEW -->
+        <div id="view-verify" style="display: none;">
+          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Check Your Inbox</h3>
+          <p style="font-size: 14px; color: var(--text-muted); line-height: 1.5;">
+            We sent a verification link & 6-digit confirmation code to:
+            <strong id="verify-target-email" style="color: var(--cyan); display: block; margin-top: 4px;"></strong>
+          </p>
+
+          <form onsubmit="handleVerifySubmit(event)">
+            <input type="text" id="verify-otp-code" class="otp-input-large" placeholder="123456" maxlength="6" pattern="[0-9]{6}" required autocomplete="one-time-code">
+            <button type="submit" class="btn-submit" id="btn-verify-submit">Verify & Enter Dashboard</button>
+          </form>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: 13px;">
+            <a href="#" class="forgot-link" onclick="handleResendCodeClick(event)" id="btn-resend-code">Resend code</a>
+            <a href="#" style="color: var(--text-dim); text-decoration: none;" onclick="switchAuthMode('signin', event)">Back to Sign In</a>
+          </div>
+        </div>
+
+        <!-- 4. FORGOT PASSWORD VIEW -->
+        <div id="view-forgot" style="display: none;">
+          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Reset Password</h3>
+          <p style="font-size: 14px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+            Enter your email and we'll send you instructions to reset your account password.
+          </p>
+
+          <form onsubmit="handleForgotSubmit(event)">
+            <div class="form-group">
+              <label for="forgot-email">Account Email</label>
+              <input type="email" id="forgot-email" class="input-field" placeholder="alex@company.com" required>
+            </div>
+            <button type="submit" class="btn-submit" id="btn-forgot-submit">Send Reset Link</button>
+          </form>
+
+          <div style="margin-top: 16px; text-align: center;">
+            <a href="#" class="forgot-link" style="font-size: 13px;" onclick="switchAuthMode('signin', event)">← Back to Sign In</a>
+          </div>
+        </div>
+
+        <!-- 5. ENTER NEW PASSWORD VIEW -->
+        <div id="view-reset" style="display: none;">
+          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Set New Password</h3>
+          <form onsubmit="handleResetSubmit(event)">
+            <input type="hidden" id="reset-token-val">
+            <div class="form-group">
+              <label for="reset-new-password">New Password</label>
+              <input type="password" id="reset-new-password" class="input-field" placeholder="••••••••••••" minlength="8" required>
+            </div>
+            <button type="submit" class="btn-submit" id="btn-reset-submit">Update Password & Sign In</button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let activeEmail = '';
+    let authConfig = { google_client_id: '' };
+
+    function showAlert(type, message) {
+      document.getElementById('auth-alert-error').style.display = 'none';
+      document.getElementById('auth-alert-success').style.display = 'none';
+      document.getElementById('auth-alert-info').style.display = 'none';
+      if (!message) return;
+
+      const el = document.getElementById(`auth-alert-${type}`);
+      if (el) {
+        el.innerText = message;
+        el.style.display = 'block';
+      }
+    }
+
+    function switchAuthMode(mode, e) {
+      if (e) e.preventDefault();
+      showAlert('error', '');
+      showAlert('success', '');
+
+      const tabsRow = document.getElementById('auth-tabs-row');
+      const tabSignIn = document.getElementById('tab-signin');
+      const tabSignUp = document.getElementById('tab-signup');
+
+      const views = ['signin', 'signup', 'verify', 'forgot', 'reset'];
+      views.forEach(v => {
+        const el = document.getElementById(`view-${v}`);
+        if (el) el.style.display = 'none';
+      });
+
+      if (mode === 'signin') {
+        tabsRow.style.display = 'grid';
+        tabSignIn.classList.add('active');
+        tabSignUp.classList.remove('active');
+        document.getElementById('view-signin').style.display = 'block';
+      } else if (mode === 'signup') {
+        tabsRow.style.display = 'grid';
+        tabSignUp.classList.add('active');
+        tabSignIn.classList.remove('active');
+        document.getElementById('view-signup').style.display = 'block';
+      } else if (mode === 'verify') {
+        tabsRow.style.display = 'none';
+        document.getElementById('view-verify').style.display = 'block';
+        document.getElementById('verify-target-email').innerText = activeEmail || 'your email';
+        document.getElementById('verify-otp-code').focus();
+      } else if (mode === 'forgot') {
+        tabsRow.style.display = 'none';
+        document.getElementById('view-forgot').style.display = 'block';
+      } else if (mode === 'reset') {
+        tabsRow.style.display = 'none';
+        document.getElementById('view-reset').style.display = 'block';
+      }
+    }
+
+    // ── REMEMBRANCE: AUTO-LOGIN CHECK ON LOAD ──────────────────────
+    async function checkExistingSession() {
+      const urlParams = new URLSearchParams(window.location.search);
+      // If user deliberately logged out or is resetting password, do not auto-redirect
+      if (urlParams.get('logout') === '1' || urlParams.get('token') || urlParams.get('reset_token') || urlParams.get('code')) {
+        return;
+      }
+
+      const activeKey = localStorage.getItem('mb_api_key');
+      const accessToken = localStorage.getItem('mb_access_token');
+
+      // Check server session with credentials (handles active JWT or refresh token cookie)
+      const headers = {};
+      if (accessToken) headers['Authorization'] = 'Bearer ' + accessToken;
+      if (activeKey) headers['X-API-Key'] = activeKey;
+
+      try {
+        const res = await fetch('/v1/auth/me', { headers, credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.authenticated && data.user) {
+            // Already signed in! Remember user & redirect directly to dashboard
+            const overlay = document.getElementById('redirect-overlay');
+            const msg = document.getElementById('redirect-msg');
+            if (msg) msg.innerText = `Welcome back, ${data.user.name || 'Developer'}!`;
+            if (overlay) overlay.style.display = 'flex';
+
+            if (data.access_token) localStorage.setItem('mb_access_token', data.access_token);
+            if (data.user.name) localStorage.setItem('mb_user_name', data.user.name);
+            if (data.user.email) localStorage.setItem('mb_user_email', data.user.email);
+            if (data.org && data.org.id) localStorage.setItem('mb_org_id', data.org.id);
+
+            setTimeout(() => {
+              window.location.href = '/dashboard';
+            }, 400);
+            return;
+          }
+        }
+      } catch (err) {
+        // Network or not authenticated - stay on auth page
+      }
+    }
+
+    // ── PUBLIC AUTH CONFIG (Google Client ID) ────────────────────────
+    async function initAuthConfig() {
+      try {
+        const res = await fetch('/v1/auth/config');
+        if (res.ok) {
+          authConfig = await res.json();
+          if (authConfig.google_client_id && window.google && google.accounts && google.accounts.id) {
+            google.accounts.id.initialize({
+              client_id: authConfig.google_client_id,
+              callback: handleGoogleCredentialResponse
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Config fetch notice:', e);
+      }
+    }
+
+    async function handleGoogleCredentialResponse(response) {
+      try {
+        const resp = await fetch('/v1/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ credential: response.credential })
+        });
+        const data = await resp.json();
+        if (resp.ok && (data.access_token || data.api_key)) {
+          persistSession(data);
+          window.location.href = '/dashboard';
+        } else {
+          showAlert('error', 'Google authentication failed: ' + (data.detail || 'Unknown error'));
+        }
+      } catch (err) {
+        showAlert('error', 'Google sign-in error: ' + err.message);
+      }
+    }
+
+    async function handleGoogleAuthClick(intent) {
+      try {
+        const redirectUri = window.location.origin + '/landing';
+        const res = await fetch(`/v1/auth/google?redirect_uri=${encodeURIComponent(redirectUri)}`, {
+          credentials: 'include'
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.url) {
+            window.location.href = data.url;
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Backend OAuth generation error:', e);
+      }
+
+      if (authConfig.google_client_id) {
+        const redirectUri = window.location.origin + '/landing';
+        const oauthUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+          client_id: authConfig.google_client_id,
+          redirect_uri: redirectUri,
+          response_type: 'code',
+          scope: 'openid email profile',
+          access_type: 'offline',
+          prompt: 'consent'
+        }).toString();
+        window.location.href = oauthUrl;
+        return;
+      }
+
+      showAlert('error', 'Google Sign-In is not configured. Please use email and password.');
+    }
+
+    function persistSession(data) {
+      if (data.access_token) localStorage.setItem('mb_access_token', data.access_token);
+      if (data.api_key) localStorage.setItem('mb_api_key', data.api_key);
+      if (data.org && data.org.id) localStorage.setItem('mb_org_id', data.org.id);
+      if (data.user) {
+        localStorage.setItem('mb_user_name', data.user.name || '');
+        localStorage.setItem('mb_user_email', data.user.email || '');
+      }
+    }
+
+    // ── SIGN IN SUBMIT ───────────────────────────────────────────────
+    async function handleSignInSubmit(e) {
+      e.preventDefault();
+      showAlert('error', '');
+      const email = document.getElementById('signin-email').value.trim();
+      const password = document.getElementById('signin-password').value;
+      const remember = document.getElementById('signin-remember').checked;
+      const btn = document.getElementById('btn-signin-submit');
+
+      btn.innerText = 'Signing In...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/v1/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email, password, remember_me: remember })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          if (data.status === 'unverified') {
+            activeEmail = email;
+            switchAuthMode('verify');
+            showAlert('info', 'Please enter your 6-digit confirmation code to activate your account.');
+            return;
+          }
+          persistSession(data);
+          window.location.href = '/dashboard';
+        } else if (res.status === 403 && data.detail && data.detail.toLowerCase().includes('verify')) {
+          activeEmail = email;
+          switchAuthMode('verify');
+          showAlert('info', data.detail);
+        } else {
+          showAlert('error', data.detail || 'Incorrect email or password.');
+        }
+      } catch (err) {
+        showAlert('error', 'Sign in failed: ' + err.message);
+      } finally {
+        btn.innerText = 'Sign In to Dashboard';
+        btn.disabled = false;
+      }
+    }
+
+    // ── SIGN UP SUBMIT ───────────────────────────────────────────────
+    async function handleSignUpSubmit(e) {
+      e.preventDefault();
+      showAlert('error', '');
+      const name = document.getElementById('signup-name').value.trim();
+      const email = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
+      const btn = document.getElementById('btn-signup-submit');
+
+      btn.innerText = 'Provisioning Workspace...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/v1/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ name, email, password })
+        });
+        const data = await res.json();
+        if (res.ok || res.status === 201) {
+          activeEmail = email;
+          switchAuthMode('verify');
+          showAlert('success', data.message || 'Verification email dispatched. Enter your 6-digit code below.');
+        } else {
+          showAlert('error', data.detail || 'Registration failed. Please try again.');
+        }
+      } catch (err) {
+        showAlert('error', 'Registration error: ' + err.message);
+      } finally {
+        btn.innerText = 'Start 3-Day Free Trial';
+        btn.disabled = false;
+      }
+    }
+
+    // ── VERIFY OTP CODE SUBMIT ───────────────────────────────────────
+    async function handleVerifySubmit(e) {
+      e.preventDefault();
+      showAlert('error', '');
+      const code = document.getElementById('verify-otp-code').value.trim();
+      const btn = document.getElementById('btn-verify-submit');
+
+      btn.innerText = 'Activating Free Trial...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/v1/auth/verify-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email: activeEmail, code: code })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'verified') {
+          persistSession(data);
+          showAlert('success', 'Email verified successfully! Redirecting...');
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 500);
+        } else {
+          showAlert('error', data.detail || 'Invalid or expired confirmation code.');
+        }
+      } catch (err) {
+        showAlert('error', 'Verification error: ' + err.message);
+      } finally {
+        btn.innerText = 'Verify & Enter Dashboard';
+        btn.disabled = false;
+      }
+    }
+
+    // ── RESEND CODE ──────────────────────────────────────────────────
+    async function handleResendCodeClick(e) {
+      e.preventDefault();
+      if (!activeEmail) {
+        showAlert('error', 'No email address specified.');
+        return;
+      }
+      const btn = document.getElementById('btn-resend-code');
+      btn.innerText = 'Sending...';
+
+      try {
+        const res = await fetch('/v1/auth/resend-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: activeEmail })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showAlert('success', data.message || 'Fresh verification code dispatched to your inbox.');
+        } else {
+          showAlert('error', data.detail || 'Could not send verification code.');
+        }
+      } catch (err) {
+        showAlert('error', 'Resend error: ' + err.message);
+      } finally {
+        btn.innerText = 'Resend code';
+      }
+    }
+
+    // ── FORGOT PASSWORD SUBMIT ───────────────────────────────────────
+    async function handleForgotSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('forgot-email').value.trim();
+      const btn = document.getElementById('btn-forgot-submit');
+      btn.innerText = 'Sending...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/v1/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        showAlert('success', data.message || 'Password reset link dispatched.');
+        setTimeout(() => switchAuthMode('signin'), 2000);
+      } catch (err) {
+        showAlert('error', err.message);
+      } finally {
+        btn.innerText = 'Send Reset Link';
+        btn.disabled = false;
+      }
+    }
+
+    // ── RESET PASSWORD SUBMIT ────────────────────────────────────────
+    async function handleResetSubmit(e) {
+      e.preventDefault();
+      const token = document.getElementById('reset-token-val').value;
+      const newPassword = document.getElementById('reset-new-password').value;
+      const btn = document.getElementById('btn-reset-submit');
+      btn.innerText = 'Updating...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/v1/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, new_password: newPassword })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showAlert('success', 'Password updated successfully! Please sign in.');
+          setTimeout(() => switchAuthMode('signin'), 1500);
+        } else {
+          showAlert('error', data.detail || 'Token expired or invalid.');
+        }
+      } catch (err) {
+        showAlert('error', err.message);
+      } finally {
+        btn.innerText = 'Update Password & Sign In';
+        btn.disabled = false;
+      }
+    }
+
+    // ── URL PARAMETERS ON LOAD ───────────────────────────────────────
+    window.addEventListener('load', () => {
+      checkExistingSession();
+      initAuthConfig();
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const tab = urlParams.get('tab');
+      if (tab === 'signup' || window.location.pathname.includes('signup') || window.location.pathname.includes('register')) {
+        switchAuthMode('signup');
+      } else {
+        switchAuthMode('signin');
+      }
+
+      // Password reset token in URL
+      const resetToken = urlParams.get('reset_token');
+      if (resetToken) {
+        switchAuthMode('reset');
+        document.getElementById('reset-token-val').value = resetToken;
+      }
+
+      // Email verification token in URL
+      const token = urlParams.get('token');
+      if (token) {
+        switchAuthMode('verify');
+        activeEmail = urlParams.get('email') || '';
+        document.getElementById('verify-target-email').innerText = activeEmail || 'your email';
+        showAlert('info', 'Verifying email confirmation token...');
+
+        fetch('/v1/auth/verify-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ token: token })
+        }).then(r => r.json()).then(data => {
+          if (data.status === 'verified') {
+            persistSession(data);
+            showAlert('success', 'Email confirmed! Entering your dashboard...');
+            setTimeout(() => { window.location.href = '/dashboard'; }, 600);
+          } else {
+            showAlert('error', data.detail || 'Verification link expired or already used.');
+          }
+        }).catch(e => {
+          showAlert('error', 'Token verification error: ' + e.message);
+        });
+      }
+    });
+  </script>
+</body>
+</html>

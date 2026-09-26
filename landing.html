@@ -1703,8 +1703,8 @@
       </ul>
       <div class="nav-actions">
         <a href="/playground" class="btn btn-secondary">Playground</a>
-        <button onclick="openAuth('login')" class="btn btn-ghost">Sign in</button>
-        <button onclick="openAuth('signup')" class="btn btn-primary">Start building</button>
+        <a href="/login" class="btn btn-ghost" id="nav-signin-btn">Sign in</a>
+        <a href="/signup" class="btn btn-primary" id="nav-signup-btn">Start building</a>
       </div>
       <button class="mobile-menu-btn">☰</button>
     </div>
@@ -2931,14 +2931,11 @@ hits = mb.assets.recall(
       document.getElementById('code-' + lang).style.display = 'block';
     }
 
-    // Auth Modal Handlers
+    // Auth Handlers
     function openAuth(tab, tier) {
-      document.getElementById('auth-modal').style.display = 'flex';
-      document.getElementById('auth-success-view').style.display = 'none';
-      if (tier && document.getElementById('signup-tier')) {
-        document.getElementById('signup-tier').value = tier;
-      }
-      switchAuthTab((tab === 'login' || tab === 'signin') ? 'signin' : 'signup');
+      const mode = (tab === 'login' || tab === 'signin') ? 'signin' : 'signup';
+      const target = mode === 'signin' ? '/login' : ('/signup' + (tier ? `?tier=${tier}` : ''));
+      window.location.href = target;
     }
 
     function closeAuth() {
@@ -3342,6 +3339,26 @@ hits = mb.assets.recall(
     // Check for password reset token or email verification token or OAuth code in URL on load
     window.addEventListener('load', () => {
       const urlParams = new URLSearchParams(window.location.search);
+
+      // Remembrance: Auto-redirect directly to dashboard if user is already signed in
+      if (urlParams.get('logout') === '1' || urlParams.get('logged_out') === '1') {
+        localStorage.clear();
+      } else if (!urlParams.get('token') && !urlParams.get('reset_token') && !urlParams.get('code') && !urlParams.get('noredirect')) {
+        const activeKey = localStorage.getItem('mb_api_key');
+        const accessToken = localStorage.getItem('mb_access_token');
+        if (activeKey || accessToken) {
+          const authHeaders = {};
+          if (accessToken) authHeaders['Authorization'] = 'Bearer ' + accessToken;
+          if (activeKey) authHeaders['X-API-Key'] = activeKey;
+          fetch('/v1/auth/me', { headers: authHeaders, credentials: 'include' })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+              if (data && data.authenticated && data.user) {
+                window.location.href = '/dashboard';
+              }
+            }).catch(() => {});
+        }
+      }
       const resetToken = urlParams.get('reset_token');
       if (resetToken) {
         document.getElementById('auth-modal').style.display = 'flex';
