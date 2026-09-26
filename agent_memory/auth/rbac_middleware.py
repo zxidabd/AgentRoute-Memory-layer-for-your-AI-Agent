@@ -6,7 +6,7 @@ from fastapi import Request, HTTPException, Security, Depends, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from ..database import get_db_session
-from ..models.db_models import Membership, Organization, APIKey
+from ..models.db_models import Membership, Organization, APIKey, UserAccount
 from .api_key_service import APIKeyService
 from ..config import settings
 
@@ -132,7 +132,7 @@ def get_auth_context(
     elif x_api_key:
         token = x_api_key.strip()
 
-    # 1. API Key Authentication
+    # 1. JWT Access Token or API Key Authentication
     if token:
         # Dev master key check
         if token == "mem_dev_master_key_123":
@@ -143,8 +143,37 @@ def get_auth_context(
                 environment="dev"
             )
 
+        # Check if caller provided a signed JWT Bearer Access Token
+        from .security import decode_access_token
+        jwt_payload = decode_access_token(token)
+        if jwt_payload and jwt_payload.get("sub"):
+            user = db.query(UserAccount).filter(UserAccount.id == jwt_payload["sub"]).first()
+            if user:
+                if not user.is_verified:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Account unverified. Please verify your email before accessing this resource."
+                    )
+                return AuthContext(
+                    org_id=jwt_payload.get("org_id", "org_default"),
+                    role=jwt_payload.get("role", AppRole.OWNER.value),
+                    auth_type="jwt",
+                    user_id=user.id
+                )
+
+        # Check API Key
         api_key = APIKeyService.verify_api_key(db, token)
         if api_key:
+            # Check owner verification state
+            mem = db.query(Membership).filter(Membership.org_id == api_key.org_id).first()
+            if mem and mem.email:
+                user = db.query(UserAccount).filter(UserAccount.email == mem.email.lower()).first()
+                if user and not user.is_verified:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Account unverified. Please verify your email before accessing this resource."
+                    )
+
             return AuthContext(
                 org_id=api_key.org_id,
                 role=api_key.role or AppRole.DEVELOPER.value,

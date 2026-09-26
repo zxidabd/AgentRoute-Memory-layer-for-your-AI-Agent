@@ -10,6 +10,9 @@ from fastapi.testclient import TestClient
 from agent_memory.api.server import app
 from agent_memory.database import get_db_session
 from agent_memory.models.db_models import UserAccount, Organization, Project, Membership
+from agent_memory.config import settings
+
+settings.environment = "testing"
 
 client = TestClient(app)
 

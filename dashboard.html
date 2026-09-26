@@ -531,6 +531,12 @@
         <button onclick="switchTab('billing')" id="tab-billing">
           Billing
         </button>
+        <button onclick="switchTab('support')" id="tab-support">
+          Support
+        </button>
+        <button onclick="switchTab('admin')" id="tab-admin" style="display: none; color: #f59e0b; font-weight: 600;">
+          Admin 👑
+        </button>
       </nav>
 
       <div class="header-right">
@@ -1055,6 +1061,142 @@ def chat_with_memory(user_id: str, user_message: str):
           </table>
         </div>
       </div>
+    <!-- VIEW: SUPPORT & HELP DESK -->
+    <section id="view-support" class="view-section hidden">
+      <div class="flex-row justify-between items-center mb-4">
+        <div>
+          <h2 style="font-size: 20px; font-weight: 600;">Contact &amp; Engineering Support</h2>
+          <p class="text-sm text-muted">Direct assistance for custom agent routing, schema migrations, and high-throughput vector clusters.</p>
+        </div>
+        <div class="flex-row gap-2">
+          <button type="button" onclick="copySupportEmail()" class="btn btn-secondary" style="height: 36px; font-size: 13px;">
+            📋 Copy support@agentroute.co
+          </button>
+        </div>
+      </div>
+
+      <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <div class="card">
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Submit Priority Support Ticket</h3>
+          <p class="text-sm text-muted" style="margin-bottom: 20px;">Tickets submitted here are routed directly to our on-call engineers.</p>
+          <form onsubmit="handleDashboardSupportSubmit(event)">
+            <div style="margin-bottom: 14px;">
+              <label class="form-label">Full Name</label>
+              <input type="text" id="dash-support-name" class="input-text" style="width: 100%;" required>
+            </div>
+            <div style="margin-bottom: 14px;">
+              <label class="form-label">Email Address</label>
+              <input type="email" id="dash-support-email" class="input-text" style="width: 100%;" required>
+            </div>
+            <div style="margin-bottom: 14px;">
+              <label class="form-label">Subject</label>
+              <input type="text" id="dash-support-subject" class="input-text" style="width: 100%;" placeholder="e.g. Quota extension or latency inquiry" required>
+            </div>
+            <div style="margin-bottom: 18px;">
+              <label class="form-label">Message Details</label>
+              <textarea id="dash-support-message" class="input-text" style="width: 100%; height: 100px; padding: 10px 14px; resize: vertical;" placeholder="Describe what you need assistance with..." required></textarea>
+            </div>
+            <button type="submit" id="btn-submit-dash-support" class="btn btn-primary" style="width: 100%;">
+              Submit Support Ticket &rarr;
+            </button>
+          </form>
+          <div id="dash-support-status" style="display: none; margin-top: 14px; font-size: 13px; text-align: center; font-weight: 500;"></div>
+        </div>
+
+        <div class="card flex-col justify-between">
+          <div>
+            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Quick Support Channels</h3>
+            <ul style="list-style: none; padding: 0; margin: 0; line-height: 2.2; font-size: 14px;">
+              <li>📧 <strong>Support Email:</strong> <code style="color: var(--color-accent);">support@agentroute.co</code></li>
+              <li>⚡ <strong>Estimated Response:</strong> Sub-4 hours for active trialing &amp; pro workspaces</li>
+              <li>🌐 <strong>Documentation:</strong> Guides for OpenAI, Anthropic, LangChain &amp; LlamaIndex</li>
+              <li>🛡️ <strong>SLA Coverage:</strong> 99.9% uptime with SOC-2 compliant vector isolation</li>
+            </ul>
+          </div>
+          <div style="background: var(--color-bg-subtle); border: 1px solid var(--color-border); border-radius: 8px; padding: 16px; margin-top: 24px;">
+            <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px;">Direct WhatsApp / Telegram On-Call</div>
+            <p class="text-xs text-muted">Available for Pro &amp; Enterprise clusters requiring dedicated VPC peering.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW: ADMIN SUPERUSER CONTROLS -->
+    <section id="view-admin" class="view-section hidden">
+      <div class="flex-row justify-between items-center mb-4">
+        <div>
+          <h2 style="font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+            Platform Superuser Controls 👑
+          </h2>
+          <p class="text-sm text-muted">Real-time revenue KPIs, multi-gateway billing analytics, and user trial overrides.</p>
+        </div>
+        <div class="flex-row gap-2">
+          <button type="button" onclick="loadAdminDashboardData()" class="btn btn-secondary" style="height: 36px; font-size: 13px;">
+            🔄 Refresh Metrics
+          </button>
+          <button type="button" onclick="handleResetDemoPayments()" class="btn btn-danger" style="height: 36px; font-size: 13px;">
+            🧹 Reset Demo Payments
+          </button>
+        </div>
+      </div>
+
+      <!-- Revenue KPIs Grid -->
+      <div class="grid-4" style="margin-bottom: 24px;">
+        <div class="card metric-card">
+          <div class="metric-label">Total Platform MRR (USD)</div>
+          <div class="metric-value" id="admin-mrr-usd">$0.00</div>
+          <div class="text-xs text-muted">Stripe &amp; Enterprise volume</div>
+        </div>
+        <div class="card metric-card">
+          <div class="metric-label">Total Platform MRR (INR)</div>
+          <div class="metric-value" id="admin-mrr-inr">₹0.00</div>
+          <div class="text-xs text-muted">Razorpay UPI &amp; Cards</div>
+        </div>
+        <div class="card metric-card">
+          <div class="metric-label">Registered Users</div>
+          <div class="metric-value" id="admin-total-users">0</div>
+          <div class="text-xs text-muted" id="admin-verified-users">0 verified</div>
+        </div>
+        <div class="card metric-card">
+          <div class="metric-label">Plan Breakdown</div>
+          <div class="metric-value" style="font-size: 18px;" id="admin-plan-breakdown">0 Starter / 0 Pro</div>
+          <div class="text-xs text-muted">Active subscriptions</div>
+        </div>
+      </div>
+
+      <!-- User Management & Access Controls -->
+      <div class="card">
+        <div class="flex-row justify-between items-center mb-4">
+          <div>
+            <h3 style="font-size: 16px; font-weight: 600;">User Accounts &amp; Free Trial Controls</h3>
+            <p class="text-xs text-muted">Search any user to manually override plan tiers, extend trials, or toggle subscription access.</p>
+          </div>
+          <div>
+            <input type="text" id="admin-user-search" oninput="handleAdminUserSearch(this.value)" placeholder="Search by email or name..." class="input-text" style="width: 280px; height: 36px; font-size: 13px;">
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>User / Developer</th>
+                <th>Status</th>
+                <th>Plan Tier</th>
+                <th>Trial Remaining</th>
+                <th>Superuser Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-users-table-body">
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--color-text-secondary); padding: 24px;">
+                  Loading registered user registry...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
   </main>
@@ -1132,7 +1274,7 @@ def chat_with_memory(user_id: str, user_message: str):
 
   <script>
     function switchTab(tab) {
-      ['explorer', 'playground', 'keys', 'sdk', 'billing', 'workspaces'].forEach(t => {
+      ['explorer', 'playground', 'keys', 'sdk', 'billing', 'workspaces', 'support', 'admin'].forEach(t => {
         const el = document.getElementById(`view-${t}`);
         const btn = document.getElementById(`tab-${t}`);
         if (el) el.classList.add('hidden');
@@ -1147,6 +1289,9 @@ def chat_with_memory(user_id: str, user_message: str):
 
       if (tab === 'keys' || tab === 'workspaces') {
         loadRealApiKeys();
+      }
+      if (tab === 'admin') {
+        loadAdminDashboardData();
       }
     }
 
@@ -1704,7 +1849,8 @@ You can ask me to explain how our architecture is configured, query my capabilit
     // Dynamic Logged-in User Profile Injection & Auth Guard
     function initUserProfile() {
       const activeKey = localStorage.getItem('mb_api_key');
-      if (!activeKey) {
+      const accessToken = localStorage.getItem('mb_access_token');
+      if (!activeKey && !accessToken) {
         window.location.href = '/landing';
         return;
       }
@@ -1747,7 +1893,6 @@ You can ask me to explain how our architecture is configured, query my capabilit
       }
 
       // 6. MCP snippet dynamic key insertion
-      const activeKey = localStorage.getItem('mb_api_key');
       if (activeKey) {
         const mcpCodeEl = document.getElementById('mcp-config-code');
         if (mcpCodeEl) {
@@ -1769,17 +1914,275 @@ You can ask me to explain how our architecture is configured, query my capabilit
         }
       }
 
-      // 7. Load real persistent API keys from backend database
+      // 7. Pre-fill Support Desk fields
+      const supName = document.getElementById('dash-support-name');
+      if (supName) supName.value = userName;
+      const supEmail = document.getElementById('dash-support-email');
+      if (supEmail) supEmail.value = userEmail;
+
+      // 8. Superuser Access Control
+      const isSuper = (userEmail.toLowerCase() === 'abdullahzaid509@gmail.com') || localStorage.getItem('mb_is_super_user') === 'true';
+      if (isSuper) {
+        const adminTab = document.getElementById('tab-admin');
+        if (adminTab) adminTab.style.display = 'inline-flex';
+      }
+
+      // 9. Load real persistent API keys from backend database
       loadRealApiKeys();
     }
 
-    function handleSignOut() {
+    async function handleSignOut() {
       if (confirm("Sign out of MemoryBrain console?")) {
+        // Revoke refresh token on server
+        try {
+          await fetch('/v1/auth/logout', {
+            method: 'POST',
+            credentials: 'include'
+          });
+        } catch (e) { /* best-effort */ }
         localStorage.removeItem('mb_api_key');
+        localStorage.removeItem('mb_access_token');
         localStorage.removeItem('mb_org_id');
         localStorage.removeItem('mb_user_name');
         localStorage.removeItem('mb_user_email');
+        localStorage.removeItem('mb_is_super_user');
         window.location.href = '/landing';
+      }
+    }
+
+    // Support Desk Helpers
+    function copySupportEmail() {
+      navigator.clipboard.writeText('support@agentroute.co').then(() => {
+        alert('Copied support@agentroute.co to clipboard!');
+      });
+    }
+
+    async function handleDashboardSupportSubmit(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-submit-dash-support');
+      const statusEl = document.getElementById('dash-support-status');
+      btn.innerText = 'Submitting Ticket...';
+      btn.disabled = true;
+
+      const payload = {
+        name: document.getElementById('dash-support-name').value.trim(),
+        email: document.getElementById('dash-support-email').value.trim(),
+        subject: document.getElementById('dash-support-subject').value.trim(),
+        message: document.getElementById('dash-support-message').value.trim(),
+        user_id: localStorage.getItem('mb_org_id') || undefined
+      };
+
+      try {
+        const resp = await fetch('/v1/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          statusEl.style.display = 'block';
+          statusEl.style.color = '#34d399';
+          statusEl.innerText = `✓ Ticket ${data.ticket_id || ''} created! Our on-call engineers have been notified.`;
+          document.getElementById('dash-support-subject').value = '';
+          document.getElementById('dash-support-message').value = '';
+        } else {
+          statusEl.style.display = 'block';
+          statusEl.style.color = '#f87171';
+          statusEl.innerText = 'Submission error: ' + (data.detail || 'Could not submit ticket.');
+        }
+      } catch (err) {
+        statusEl.style.display = 'block';
+        statusEl.style.color = '#f87171';
+        statusEl.innerText = 'Network error: ' + err.message;
+      } finally {
+        btn.innerText = 'Submit Support Ticket →';
+        btn.disabled = false;
+      }
+    }
+
+    // Superuser Admin Section Functions
+    let allAdminUsers = [];
+
+    async function loadAdminDashboardData() {
+      const token = localStorage.getItem('mb_access_token');
+      const apiKey = localStorage.getItem('mb_api_key');
+      const userEmail = localStorage.getItem('mb_user_email') || 'abdullahzaid509@gmail.com';
+      const headers = {
+        'x-user-email': userEmail
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      else if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+      // 1. Fetch Revenue KPIs
+      try {
+        const resp = await fetch('/v1/admin/stats', { headers });
+        if (resp.ok) {
+          const stats = await resp.json();
+          if (stats.kpis) {
+            document.getElementById('admin-mrr-usd').innerText = stats.kpis.total_platform_revenue.usd;
+            document.getElementById('admin-mrr-inr').innerText = stats.kpis.total_platform_revenue.inr;
+            document.getElementById('admin-total-users').innerText = stats.kpis.total_users;
+            document.getElementById('admin-verified-users').innerText = `${stats.kpis.verified_users} verified`;
+          }
+          if (stats.plan_breakdown) {
+            document.getElementById('admin-plan-breakdown').innerText =
+              `${stats.plan_breakdown.starter} Starter / ${stats.plan_breakdown.pro} Pro / ${stats.plan_breakdown.scale} Scale`;
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load revenue stats:', e);
+      }
+
+      // 2. Fetch User Accounts
+      try {
+        const resp = await fetch('/v1/admin/users', { headers });
+        if (resp.ok) {
+          allAdminUsers = await resp.json();
+          renderAdminUsers(allAdminUsers);
+        }
+      } catch (e) {
+        console.warn('Could not load admin users:', e);
+      }
+    }
+
+    function renderAdminUsers(users) {
+      const tbody = document.getElementById('admin-users-table-body');
+      if (!tbody) return;
+
+      if (!users || users.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--color-text-secondary); padding: 24px;">No user accounts found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = users.map(u => {
+        const statusBadge = u.subscription_status === 'active'
+          ? `<span class="badge badge-success">active</span>`
+          : u.subscription_status === 'trialing'
+          ? `<span class="badge badge-info">trialing</span>`
+          : `<span class="badge badge-warning">${u.subscription_status || 'trialing'}</span>`;
+
+        const superBadge = u.is_super_user ? ` <span style="font-size: 11px; color: #f59e0b; font-weight: bold;">👑 ADMIN</span>` : '';
+        const trialRemaining = u.subscription_status === 'trialing'
+          ? `${u.days_remaining}d remaining`
+          : (u.subscription_status === 'active' ? 'Active Paid' : 'Expired');
+
+        return `
+          <tr>
+            <td style="padding: 12px 16px;">
+              <div style="font-weight: 500; color: var(--color-text-primary);">${u.name || 'Developer'}${superBadge}</div>
+              <div class="text-xs text-muted font-mono">${u.email}</div>
+            </td>
+            <td style="padding: 12px 16px;">${statusBadge}</td>
+            <td style="padding: 12px 16px; font-weight: 500; text-transform: capitalize;">${u.plan_tier || 'free_trial'}</td>
+            <td style="padding: 12px 16px; font-size: 13px; color: var(--color-text-secondary);">${trialRemaining}</td>
+            <td style="padding: 12px 16px;">
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <select onchange="handleAdminOverridePlan('${u.id}', this.value)" class="input-text" style="height: 30px; font-size: 12px; padding: 0 8px;">
+                  <option value="" disabled selected>Change Plan</option>
+                  <option value="starter">Starter</option>
+                  <option value="pro">Pro ($49)</option>
+                  <option value="scale">Scale ($249)</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+                <select onchange="handleAdminExtendTrial('${u.id}', this.value)" class="input-text" style="height: 30px; font-size: 12px; padding: 0 8px;">
+                  <option value="" disabled selected>Extend Trial</option>
+                  <option value="3">+3 Days</option>
+                  <option value="7">+7 Days</option>
+                  <option value="30">+30 Days</option>
+                </select>
+                <button onclick="handleAdminToggleStatus('${u.id}', '${u.subscription_status === 'active' ? 'canceled' : 'active'}')" class="btn btn-secondary" style="height: 30px; font-size: 11px; padding: 0 10px;">
+                  ${u.subscription_status === 'active' ? 'Cancel' : 'Activate'}
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function handleAdminUserSearch(query) {
+      if (!query || !query.trim()) {
+        renderAdminUsers(allAdminUsers);
+        return;
+      }
+      const q = query.toLowerCase().trim();
+      const filtered = allAdminUsers.filter(u =>
+        (u.email && u.email.toLowerCase().includes(q)) ||
+        (u.name && u.name.toLowerCase().includes(q))
+      );
+      renderAdminUsers(filtered);
+    }
+
+    async function handleAdminOverridePlan(userId, planTier) {
+      const userEmail = localStorage.getItem('mb_user_email') || 'abdullahzaid509@gmail.com';
+      try {
+        const resp = await fetch(`/v1/admin/users/${userId}/plan`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-email': userEmail
+          },
+          body: JSON.stringify({ plan_tier: planTier })
+        });
+        const data = await resp.json();
+        alert(data.message || 'Plan updated.');
+        loadAdminDashboardData();
+      } catch (e) {
+        alert('Failed to override plan: ' + e.message);
+      }
+    }
+
+    async function handleAdminExtendTrial(userId, days) {
+      const userEmail = localStorage.getItem('mb_user_email') || 'abdullahzaid509@gmail.com';
+      try {
+        const resp = await fetch(`/v1/admin/users/${userId}/trial`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-email': userEmail
+          },
+          body: JSON.stringify({ days: parseInt(days) })
+        });
+        const data = await resp.json();
+        alert(data.message || 'Trial extended.');
+        loadAdminDashboardData();
+      } catch (e) {
+        alert('Failed to extend trial: ' + e.message);
+      }
+    }
+
+    async function handleAdminToggleStatus(userId, status) {
+      const userEmail = localStorage.getItem('mb_user_email') || 'abdullahzaid509@gmail.com';
+      try {
+        const resp = await fetch(`/v1/admin/users/${userId}/status`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-email': userEmail
+          },
+          body: JSON.stringify({ status })
+        });
+        const data = await resp.json();
+        alert(data.message || 'Status updated.');
+        loadAdminDashboardData();
+      } catch (e) {
+        alert('Failed to update status: ' + e.message);
+      }
+    }
+
+    async function handleResetDemoPayments() {
+      if (!confirm("Are you sure you want to reset all mock/demo payments before going live?")) return;
+      const userEmail = localStorage.getItem('mb_user_email') || 'abdullahzaid509@gmail.com';
+      try {
+        const resp = await fetch('/v1/admin/reset-demo-payments', {
+          method: 'POST',
+          headers: { 'x-user-email': userEmail }
+        });
+        const data = await resp.json();
+        alert(data.message || 'Demo payments reset.');
+        loadAdminDashboardData();
+      } catch (e) {
+        alert('Reset failed: ' + e.message);
       }
     }
 

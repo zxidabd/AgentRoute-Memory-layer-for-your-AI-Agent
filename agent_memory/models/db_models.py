@@ -92,6 +92,51 @@ class UserAccount(Base):
     reset_token_expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
+    is_super_user = Column(Boolean, default=False)
+    subscription_status = Column(String(50), default="trialing") # active, trialing, expired, canceled
+    plan_tier = Column(String(50), default="free_trial")         # free_trial, starter, pro, enterprise
+    trial_ends_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class EmailVerificationToken(Base):
+    """Cryptographic single-use email verification tokens (24-hour expiration window)."""
+    __tablename__ = "email_verification_tokens"
+
+    id = Column(String(64), primary_key=True)
+    user_id = Column(String(64), ForeignKey("user_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_hash = Column(String(128), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    consumed = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class ContactMessage(Base):
+    """Support & Contact inquiries from visitors and authenticated users."""
+    __tablename__ = "contact_messages"
+
+    id = Column(String(64), primary_key=True)
+    name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=False, index=True)
+    subject = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False)
+    user_id = Column(String(64), nullable=True, index=True)
+    ip_address = Column(String(64), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class RefreshToken(Base):
+    """Server-side refresh token storage. Only SHA-256 hash is stored."""
+    __tablename__ = "refresh_tokens"
+
+    id = Column(String(64), primary_key=True)
+    user_id = Column(String(64), ForeignKey("user_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_hash = Column(String(128), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    user_agent = Column(String(512), nullable=True)
+    ip_address = Column(String(64), nullable=True)
 
 
 class Membership(Base):

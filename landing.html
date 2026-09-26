@@ -2612,6 +2612,46 @@ hits = mb.assets.recall(
     </div>
   </section>
 
+  <!-- CONTACT & SUPPORT SECTION -->
+  <section id="contact" style="padding: 80px 0; background: var(--color-bg-secondary); border-top: 1px solid var(--color-border);">
+    <div class="container" style="max-width: 680px; margin: 0 auto;">
+      <div style="text-align: center; margin-bottom: 40px;">
+        <div class="badge-tag" style="display: inline-block; margin-bottom: 12px;">Contact &amp; Support</div>
+        <h2 style="font-size: 32px; font-weight: 700; margin-bottom: 12px;">Get in touch with our team</h2>
+        <p style="color: var(--color-text-secondary); font-size: 15px;">
+          Have questions about integration, custom enterprise VPC deployments, or our 3-day free trial? Send us a message and our engineering team will respond within a few hours.
+        </p>
+      </div>
+
+      <div class="card" style="padding: 32px; border-radius: 12px; background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: 0 8px 30px rgba(0,0,0,0.2);">
+        <form onsubmit="handleContactSubmit(event)">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+            <div class="form-group" style="margin: 0;">
+              <label>Full Name</label>
+              <input type="text" id="contact-name" class="form-input" placeholder="Your Name" required>
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label>Email Address</label>
+              <input type="email" id="contact-email" class="form-input" placeholder="name@company.com" required>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label>Subject</label>
+            <input type="text" id="contact-subject" class="form-input" placeholder="e.g. Enterprise SLA inquiry / Memory syncing" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 20px;">
+            <label>Message</label>
+            <textarea id="contact-message" class="form-input" rows="4" placeholder="How can we help your team?" required style="resize: vertical;"></textarea>
+          </div>
+          <button type="submit" id="btn-submit-contact" class="btn btn-primary" style="width: 100%;">
+            Send Inquiry &rarr;
+          </button>
+        </form>
+        <div id="contact-status" style="display: none; margin-top: 16px; text-align: center; font-size: 14px; font-weight: 500;"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- AUTH MODAL -->
   <div id="auth-modal" class="modal-backdrop" onclick="if(event.target===this) closeAuth()">
     <div class="modal-box">
@@ -2645,11 +2685,11 @@ hits = mb.assets.recall(
               <label style="margin:0;">Password</label>
               <a href="#" onclick="showForgotPassword(event)" style="font-size:12px; color:var(--color-accent); text-decoration:none;">Forgot password?</a>
             </div>
-            <input type="password" id="login-password" class="form-input" placeholder="••••••••" style="margin-top:6px;">
+            <input type="password" id="login-password" class="form-input" placeholder="••••••••" required style="margin-top:6px;">
           </div>
-          <div class="form-group">
-            <label>Or Sign In with API Key</label>
-            <input type="text" id="login-key" class="form-input" placeholder="mb_live_... (optional)">
+          <div class="form-group" style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+            <input type="checkbox" id="login-remember" style="width:16px; height:16px; accent-color:var(--color-accent); cursor:pointer;">
+            <label for="login-remember" style="margin:0; font-size:13px; color:var(--color-text-secondary); cursor:pointer;">Remember me for 30 days</label>
           </div>
           <button type="submit" id="btn-submit-login" class="btn btn-primary" style="width:100%; margin-top:8px;">
             Sign In to Console
@@ -2681,7 +2721,7 @@ hits = mb.assets.recall(
           </div>
           <div class="form-group">
             <label>Password</label>
-            <input type="password" id="signup-password" class="form-input" placeholder="Minimum 6 characters" required minlength="6">
+            <input type="password" id="signup-password" class="form-input" placeholder="Minimum 8 characters" required minlength="8">
           </div>
           <div class="form-group">
             <label>Workspace / Company Name</label>
@@ -2753,7 +2793,7 @@ hits = mb.assets.recall(
           <input type="hidden" id="reset-token-val">
           <div class="form-group">
             <label>New Password</label>
-            <input type="password" id="reset-new-password" class="form-input" placeholder="At least 6 characters" required minlength="6">
+            <input type="password" id="reset-new-password" class="form-input" placeholder="At least 8 characters" required minlength="8">
           </div>
           <button type="submit" id="btn-submit-reset" class="btn btn-primary" style="width:100%; margin-top:8px;">
             Update Password &amp; Sign In
@@ -2977,37 +3017,8 @@ hits = mb.assets.recall(
         return;
       }
 
-      // Dev / Demo Mode Prompt Fallback when GOOGLE_CLIENT_ID is not configured in environment
-      const devEmail = prompt(
-        "Google Authentication (Dev/Demo Mode):\nEnter your Google email to authenticate:",
-        "developer@gmail.com"
-      );
-      if (!devEmail) return;
-
-      try {
-        const resp = await fetch('/v1/auth/google', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: devEmail,
-            name: devEmail.split('@')[0].replace('.', ' ').toUpperCase()
-          })
-        });
-        const data = await resp.json();
-        if (resp.ok && data.api_key) {
-          localStorage.setItem('mb_api_key', data.api_key);
-          if (data.org) localStorage.setItem('mb_org_id', data.org.id);
-          if (data.user) {
-            localStorage.setItem('mb_user_name', data.user.name || '');
-            localStorage.setItem('mb_user_email', data.user.email || '');
-          }
-          window.location.href = '/dashboard';
-        } else {
-          alert('Google Sign-in failed: ' + (data.detail || 'Could not complete login'));
-        }
-      } catch (err) {
-        alert('Network error: ' + err.message);
-      }
+      // Google OAuth not configured
+      alert('Google Sign-In is not configured. Please use email and password to sign in.');
     }
 
     let pendingVerifyEmail = '';
@@ -3081,10 +3092,15 @@ hits = mb.assets.recall(
       e.preventDefault();
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
-      const apiKey = document.getElementById('login-key').value.trim();
+      const rememberMe = document.getElementById('login-remember').checked;
       const btn = document.getElementById('btn-submit-login');
 
-      if (!apiKey && !password) {
+      if (!email) {
+        alert('Please enter your email address.');
+        document.getElementById('login-email').focus();
+        return;
+      }
+      if (!password) {
         alert('Please enter your account password to sign in.');
         document.getElementById('login-password').focus();
         return;
@@ -3097,7 +3113,8 @@ hits = mb.assets.recall(
         const resp = await fetch('/v1/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email || null, password: password || null, api_key: apiKey || null })
+          credentials: 'include',
+          body: JSON.stringify({ email, password, remember_me: rememberMe })
         });
         const data = await resp.json();
         if (resp.ok) {
@@ -3108,7 +3125,14 @@ hits = mb.assets.recall(
             document.getElementById('auth-verify-view').style.display = 'block';
             return;
           }
-          localStorage.setItem('mb_api_key', data.api_key || apiKey);
+          // Store JWT access token
+          if (data.access_token) {
+            localStorage.setItem('mb_access_token', data.access_token);
+          }
+          // Store API key for backward compatibility
+          if (data.api_key) {
+            localStorage.setItem('mb_api_key', data.api_key);
+          }
           localStorage.setItem('mb_org_id', data.org ? data.org.id : '');
           if (data.user && data.user.name) {
             localStorage.setItem('mb_user_name', data.user.name);
@@ -3119,8 +3143,16 @@ hits = mb.assets.recall(
             localStorage.setItem('mb_user_name', guessedName);
           }
           window.location.href = '/dashboard';
+        } else if (resp.status === 403) {
+          // Unverified email - show verification view
+          pendingVerifyEmail = email;
+          document.getElementById('verify-email-target').innerText = pendingVerifyEmail;
+          document.getElementById('auth-signin-view').style.display = 'none';
+          document.getElementById('auth-verify-view').style.display = 'block';
+          // Auto-trigger resend
+          handleResendOtp(null);
         } else {
-          alert('Login failed: ' + (data.detail || 'Incorrect email or password.'));
+          alert('Login failed: ' + (data.detail || data.error?.message || 'Incorrect email or password.'));
         }
       } catch (err) {
         alert('Authentication error: Unable to contact server. Please try again.');
@@ -3255,7 +3287,7 @@ hits = mb.assets.recall(
       }
     }
 
-    // Check for password reset token in URL on load
+    // Check for password reset token or email verification token or OAuth code in URL on load
     window.addEventListener('load', () => {
       const urlParams = new URLSearchParams(window.location.search);
       const resetToken = urlParams.get('reset_token');
@@ -3268,7 +3300,124 @@ hits = mb.assets.recall(
         document.getElementById('auth-reset-view').style.display = 'block';
         document.getElementById('reset-token-val').value = resetToken;
       }
+
+      // Single-click email verification link handler
+      const verifyToken = urlParams.get('token');
+      if (verifyToken) {
+        document.getElementById('auth-modal').style.display = 'flex';
+        document.getElementById('auth-signin-view').style.display = 'none';
+        document.getElementById('auth-signup-view').style.display = 'none';
+        document.getElementById('auth-verify-view').style.display = 'block';
+        document.getElementById('verify-email-target').innerText = urlParams.get('email') || 'your account';
+        const verifyBtn = document.getElementById('btn-submit-verify');
+        verifyBtn.innerText = 'Activating Free Trial...';
+        verifyBtn.disabled = true;
+
+        fetch('/v1/auth/verify-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ token: verifyToken })
+        }).then(r => r.json()).then(data => {
+          if (data.status === 'verified') {
+            if (data.access_token) localStorage.setItem('mb_access_token', data.access_token);
+            if (data.api_key) localStorage.setItem('mb_api_key', data.api_key);
+            if (data.org) localStorage.setItem('mb_org_id', data.org.id);
+            if (data.user) {
+              localStorage.setItem('mb_user_name', data.user.name || '');
+              localStorage.setItem('mb_user_email', data.user.email || '');
+            }
+            window.location.href = '/dashboard';
+          } else {
+            alert('Verification issue: ' + (data.detail || 'Link expired or consumed.'));
+            verifyBtn.innerText = 'Verify & Activate Workspace';
+            verifyBtn.disabled = false;
+          }
+        }).catch(err => {
+          alert('Network error verifying token: ' + err.message);
+          verifyBtn.innerText = 'Verify & Activate Workspace';
+          verifyBtn.disabled = false;
+        });
+      }
+
+      // Google OAuth Redirect code handler
+      const googleCode = urlParams.get('code');
+      if (googleCode) {
+        document.getElementById('auth-modal').style.display = 'flex';
+        document.getElementById('auth-signin-view').style.display = 'none';
+        document.getElementById('auth-signup-view').style.display = 'none';
+        document.getElementById('auth-verify-view').style.display = 'block';
+        document.getElementById('verify-email-target').innerText = 'Google Account Authorization';
+        const verifyBtn = document.getElementById('btn-submit-verify');
+        verifyBtn.innerText = 'Authenticating with Google...';
+        verifyBtn.disabled = true;
+
+        fetch('/v1/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ code: googleCode, redirect_uri: window.location.origin + window.location.pathname })
+        }).then(r => r.json()).then(data => {
+          if (data.status === 'authenticated') {
+            if (data.access_token) localStorage.setItem('mb_access_token', data.access_token);
+            if (data.api_key) localStorage.setItem('mb_api_key', data.api_key);
+            if (data.org) localStorage.setItem('mb_org_id', data.org.id);
+            if (data.user) {
+              localStorage.setItem('mb_user_name', data.user.name || '');
+              localStorage.setItem('mb_user_email', data.user.email || '');
+            }
+            window.location.href = '/dashboard';
+          } else {
+            alert('Google login failed: ' + (data.detail || 'Could not exchange code.'));
+            switchAuthTab('signin');
+          }
+        }).catch(err => {
+          alert('OAuth error: ' + err.message);
+          switchAuthTab('signin');
+        });
+      }
     });
+
+    async function handleContactSubmit(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-submit-contact');
+      const statusEl = document.getElementById('contact-status');
+      btn.innerText = 'Sending Inquiry...';
+      btn.disabled = true;
+
+      const payload = {
+        name: document.getElementById('contact-name').value.trim(),
+        email: document.getElementById('contact-email').value.trim(),
+        subject: document.getElementById('contact-subject').value.trim(),
+        message: document.getElementById('contact-message').value.trim()
+      };
+
+      try {
+        const resp = await fetch('/v1/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          statusEl.style.display = 'block';
+          statusEl.style.color = '#34d399';
+          statusEl.innerText = '✓ Thank you! We received your inquiry and sent an acknowledgment to your inbox.';
+          e.target.reset();
+        } else {
+          statusEl.style.display = 'block';
+          statusEl.style.color = '#f87171';
+          statusEl.innerText = 'Submission error: ' + (data.detail || 'Please check inputs.');
+        }
+      } catch (err) {
+        statusEl.style.display = 'block';
+        statusEl.style.color = '#f87171';
+        statusEl.innerText = 'Network error: ' + err.message;
+      } finally {
+        btn.innerText = 'Send Inquiry →';
+        btn.disabled = false;
+      }
+    }
 
     function copyKey() {
       const key = document.getElementById('created-key-text').innerText;

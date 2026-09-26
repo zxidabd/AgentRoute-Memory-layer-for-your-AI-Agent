@@ -37,7 +37,11 @@ class Settings(BaseSettings):
         "MEMORY_ENCRYPTION_KEY",
         "v_s4K3-x1g_bS9c6vT7rU9yP8wL4zM2aN0oP3eR6tY8="
     )
-    jwt_secret: str = os.getenv("JWT_SECRET", "super_secret_production_jwt_key_9812")
+    # JWT Authentication
+    jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", os.getenv("JWT_SECRET", "super_secret_dev_jwt_key_change_in_production"))
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    refresh_token_expire_days: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
 
     # Server & Operations
     host: str = os.getenv("HOST", "0.0.0.0")
@@ -63,14 +67,24 @@ class Settings(BaseSettings):
     clerk_publishable_key: str = os.getenv("CLERK_PUBLISHABLE_KEY", "pk_test_mock_clerk_publishable_key")
     rbac_emergency_bypass: bool = os.getenv("RBAC_EMERGENCY_BYPASS", "false").lower() in ("true", "1", "yes")
 
-    # Resend Transactional Email Configuration
-    resend_api_key: str = os.getenv("RESEND_API_KEY", "")
-    resend_from_email: str = os.getenv("RESEND_FROM_EMAIL", "MemoryBrain <onboarding@resend.dev>")
-    app_base_url: str = os.getenv("APP_BASE_URL", "http://localhost:8000")
+    # Transactional Email Configuration (Resend + SMTP)
+    resend_api_key: str = os.getenv("RESEND_API_KEY", os.getenv("SMTP_PASSWORD", ""))
+    resend_from_email: str = os.getenv("RESEND_FROM_EMAIL", os.getenv("SMTP_FROM_EMAIL", "noreply@agentroute.co"))
+    smtp_from_name: str = os.getenv("SMTP_FROM_NAME", "AgentRoute-AI memory layer")
+    smtp_username: str = os.getenv("SMTP_USERNAME", "abdullahzaid509@gmail.com")
+    smtp_password: str = os.getenv("SMTP_PASSWORD", "")
+    smtp_server: str = os.getenv("SMTP_SERVER", "smtp.resend.com")
+    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
+    app_base_url: str = os.getenv("APP_BASE_URL", os.getenv("FRONTEND_URL", "http://localhost:8000"))
+    support_email: str = os.getenv("SUPPORT_EMAIL", "support@agentroute.co")
 
-    # Google OAuth / Identity Services
-    google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
-    google_client_secret: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
+    # Superuser Access Control
+    superuser_emails: str = os.getenv("SUPERUSER_EMAILS", "abdullahzaid509@gmail.com")
+
+    # Google OAuth / Identity Services (supports both standard and Google Cloud naming)
+    google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", os.getenv("GOOGLE_OAUTH_CLIENT_ID", ""))
+    google_client_secret: str = os.getenv("GOOGLE_CLIENT_SECRET", os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", ""))
+    google_redirect_uri: str = os.getenv("GOOGLE_REDIRECT_URI", os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "/landing"))
 
     # Memory Engine Hyperparameters
     decay_rate_lambda: float = 0.005  # Ebbinghaus decay per day

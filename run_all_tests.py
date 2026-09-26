@@ -29,6 +29,7 @@ TESTS = [
     ("Pillar 26: Enterprise Data Assets, Business Metrics & Lineage Context Graph", ROOT_DIR / "tests" / "test_pillar26_enterprise_data_assets.py"),
     ("Auth Security: Strict Login Gate & Password Verification", ROOT_DIR / "tests" / "test_auth_security.py"),
     ("OAuth Integration: Google Sign-In & Single Sign-On", ROOT_DIR / "tests" / "test_google_auth.py"),
+    ("Email Verification & Admin Controls", ROOT_DIR / "tests" / "test_email_verification_and_admin.py"),
 ]
 
 

@@ -1,4 +1,4 @@
-"""Workspaces, Projects, RBAC Team Management, and Clerk Webhooks API Routes."""
+"""Workspaces, Projects, RBAC Team Management, and Auth API Routes."""
 
 import uuid
 import secrets
@@ -10,12 +10,13 @@ import httpx
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field, EmailStr
-from fastapi import APIRouter, Depends, HTTPException, Request, Header, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Header, Response, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from ...config import settings
 from ...database import get_db_session
-from ...models.db_models import Organization, Project, Membership, Invitation, APIKey, UserAccount
+from ...models.db_models import Organization, Project, Membership, Invitation, APIKey, UserAccount, RefreshToken, EmailVerificationToken
 
 from ...auth.rbac_middleware import (
     AuthContext,
@@ -27,6 +28,16 @@ from ...auth.rbac_middleware import (
 from ...auth.api_key_service import APIKeyService
 from ...auth.clerk_service import ClerkService
 from ...services.email_service import EmailService
+from ...auth.security import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    decode_access_token,
+    generate_refresh_token,
+    hash_refresh_token,
+    create_email_verification_token,
+    hash_email_token
+)
 
 
 router = APIRouter(tags=["Workspaces & Team RBAC (v1)"])
@@ -71,32 +82,20 @@ def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
     return dt
 
 
-def hash_password(password: str) -> str:
 
-    """PBKDF2-HMAC-SHA256 salted password hashing."""
-    salt = secrets.token_hex(16)
-    key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt.encode('utf-8'), 100000).hex()
-    return f"{salt}:{key}"
-
-def verify_password(stored_password_hash: str, provided_password: str) -> bool:
-    """Verifies provided password against stored salted PBKDF2 hash."""
-    if not stored_password_hash or ":" not in stored_password_hash:
-        return False
-    salt, key = stored_password_hash.split(":", 1)
-    new_key = hashlib.pbkdf2_hmac('sha256', provided_password.encode('utf-8'), salt.encode('utf-8'), 100000).hex()
-    return hmac.compare_digest(key, new_key)
 
 class SignupRequest(BaseModel):
     name: str = Field(..., description="Developer or founder full name")
     email: EmailStr = Field(..., description="Work email address")
-    password: Optional[str] = Field(default=None, description="Account password")
+    password: str = Field(..., min_length=8, description="Account password (minimum 8 characters)")
     organization_name: Optional[str] = Field(default=None, description="Company or workspace name")
     tier: str = Field(default="starter", description="starter, growth, scale, enterprise")
 
 
 class VerifyEmailRequest(BaseModel):
-    email: EmailStr = Field(..., description="User email address")
-    code: str = Field(..., description="6-digit verification code")
+    email: Optional[EmailStr] = Field(default=None, description="User email address")
+    code: Optional[str] = Field(default=None, description="6-digit verification code")
+    token: Optional[str] = Field(default=None, description="Cryptographic single-use verification token from email CTA")
 
 
 class ResendCodeRequest(BaseModel):
@@ -116,9 +115,12 @@ class LoginRequest(BaseModel):
     email: Optional[str] = Field(default=None, description="Email address to log in")
     password: Optional[str] = Field(default=None, description="Account password")
     api_key: Optional[str] = Field(default=None, description="Active API key to log in")
+    remember_me: bool = Field(default=False, description="Keep session persistent across browser restarts")
 
 
 class GoogleAuthRequest(BaseModel):
+    code: Optional[str] = Field(default=None, description="OAuth 2.0 authorization code from Google redirect")
+    redirect_uri: Optional[str] = Field(default=None, description="Redirect URI used in Google consent flow")
     credential: Optional[str] = Field(default=None, description="Google ID Token JWT from Google Identity Services")
     email: Optional[str] = Field(default=None, description="Email directly provided or decoded")
     name: Optional[str] = Field(default=None, description="User full name from Google")
@@ -528,7 +530,8 @@ async def clerk_webhook(
 
 # --- Self-Serve Signup & Login Routes ---
 
-@router.post("/v1/auth/signup", summary="Self-Serve Developer Signup with Resend Verification")
+@router.post("/v1/auth/signup", summary="Self-Serve Developer Signup with Verification")
+@router.post("/api/v1/auth/signup", summary="Self-Serve Developer Signup (Alias)")
 def self_serve_signup(
     payload: SignupRequest,
     db: Session = Depends(get_db_session)
@@ -540,17 +543,28 @@ def self_serve_signup(
     if user and user.is_verified:
         raise HTTPException(status_code=400, detail="An account with this email already exists. Please sign in.")
 
-    # Generate 6-digit confirmation code
+    # 1. Generate 6-digit confirmation code & 24h cryptographic token
     otp_code = str(secrets.randbelow(900000) + 100000)
     now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(minutes=15)
-    pw_hash = hash_password(payload.password) if payload.password else hash_password(secrets.token_hex(8))
+    expires_at = now + timedelta(minutes=30)
+    pw_hash = hash_password(payload.password)
+
+    # Superuser check
+    superuser_emails = [e.strip().lower() for e in settings.superuser_emails.split(",") if e.strip()]
+    is_super = bool(clean_email in superuser_emails or clean_email == "abdullahzaid509@gmail.com")
+
+    # 3-Day Free Trial
+    trial_expiry = now + timedelta(days=3)
 
     if user:
         user.name = payload.name
         user.password_hash = pw_hash
         user.verification_code = otp_code
         user.verification_code_expires_at = expires_at
+        user.subscription_status = "trialing"
+        user.plan_tier = "free_trial"
+        user.trial_ends_at = trial_expiry
+        user.is_super_user = is_super or user.is_super_user
         user.updated_at = now
     else:
         user = UserAccount(
@@ -561,50 +575,107 @@ def self_serve_signup(
             is_verified=False,
             verification_code=otp_code,
             verification_code_expires_at=expires_at,
+            subscription_status="trialing",
+            plan_tier="free_trial",
+            trial_ends_at=trial_expiry,
+            is_super_user=is_super,
             created_at=now,
             updated_at=now
         )
         db.add(user)
     db.commit()
 
-    # Dispatch confirmation email via Resend
-    EmailService.send_signup_verification(clean_email, payload.name, otp_code)
+    # 2. Store 24-hour cryptographic token in email_verification_tokens
+    raw_token = create_email_verification_token(user.id)
+    token_hash = hash_email_token(raw_token)
+    verif_token_rec = EmailVerificationToken(
+        id=f"evt_{secrets.token_hex(8)}",
+        user_id=user.id,
+        token_hash=token_hash,
+        expires_at=now + timedelta(hours=24),
+        consumed=False,
+        created_at=now
+    )
+    db.add(verif_token_rec)
+    db.commit()
+
+    # 3. Dispatch verification email with direct CTA button and backup OTP code
+    try:
+        EmailService.send_verification_email(clean_email, payload.name, token=raw_token, code=otp_code)
+    except Exception:
+        pass
 
     return {
         "status": "pending_verification",
         "email": clean_email,
-        "message": f"Verification code sent to {clean_email}. Please enter the 6-digit code to activate your account."
+        "subscription_status": "trialing",
+        "plan_tier": "free_trial",
+        "trial_ends_at": trial_expiry.isoformat(),
+        "message": f"Verification email dispatched to {clean_email}. Please click the link in your inbox or enter the 6-digit code to activate your account."
     }
 
 
-@router.post("/v1/auth/verify-email", summary="Confirm Email with 6-Digit OTP Code")
+@router.post("/v1/auth/verify-email", summary="Confirm Email with Token or 6-Digit OTP Code")
+@router.post("/api/v1/auth/verify-email", summary="Confirm Email (Alias)")
 def verify_email(
     payload: VerifyEmailRequest,
+    response: Response,
+    request: Request,
     db: Session = Depends(get_db_session)
 ) -> Dict[str, Any]:
-    clean_email = payload.email.strip().lower()
-    user = db.query(UserAccount).filter(UserAccount.email == clean_email).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Account not found. Please sign up.")
-
     now = datetime.now(timezone.utc)
-    if not user.is_verified:
+    user = None
+
+    # Path A: Single-Use Cryptographic Token Verification
+    if payload.token:
+        token_hash = hash_email_token(payload.token.strip())
+        tok_rec = db.query(EmailVerificationToken).filter(
+            EmailVerificationToken.token_hash == token_hash,
+            EmailVerificationToken.consumed == False
+        ).first()
+
+        if not tok_rec:
+            raise HTTPException(status_code=400, detail="Invalid or already consumed verification link. Please request a new one.")
+
+        exp = ensure_utc(tok_rec.expires_at)
+        if exp and now > exp:
+            raise HTTPException(status_code=400, detail="Verification link has expired (24-hour window). Please request a new link.")
+
+        tok_rec.consumed = True
+        user = db.query(UserAccount).filter(UserAccount.id == tok_rec.user_id).first()
+
+    # Path B: 6-Digit OTP Code Verification
+    elif payload.email and payload.code:
+        clean_email = payload.email.strip().lower()
+        user = db.query(UserAccount).filter(UserAccount.email == clean_email).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Account not found. Please sign up.")
+
         if not user.verification_code or user.verification_code != payload.code.strip():
             raise HTTPException(status_code=400, detail="Invalid verification code.")
         exp = ensure_utc(user.verification_code_expires_at)
         if exp and now > exp:
             raise HTTPException(status_code=400, detail="Verification code has expired. Please request a new code.")
 
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Either a verification token or email + 6-digit code must be provided."
+        )
 
-        user.is_verified = True
-        user.verification_code = None
-        user.updated_at = now
-        db.commit()
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found.")
 
-    # Ensure Organization, Project, and APIKey exist for verified user
-    mem = db.query(Membership).filter(Membership.email == clean_email).first()
+    user.is_verified = True
+    user.verification_code = None
+    user.updated_at = now
+    db.commit()
+
+    # Ensure Organization, Project, and Membership exist
+    clean_email = user.email
+    mem = db.query(Membership).filter(Membership.email.ilike(clean_email)).first()
     if not mem:
-        org_name = f"{user.name.split()[0]}'s Workspace" if user.name else "My Workspace"
+        org_name = f"{user.name.split()[0]}'s Workspace" if (user.name and user.name.strip()) else "My Workspace"
         base_slug = org_name.lower().replace(" ", "-").replace(".", "")
         clean_slug = f"{base_slug}-{secrets.token_hex(3)}"
         org = Organization(
@@ -612,7 +683,7 @@ def verify_email(
             name=org_name,
             slug=clean_slug,
             tier="starter",
-            subscription_status="active",
+            subscription_status="trialing",
             created_at=datetime.now(timezone.utc)
         )
         db.add(org)
@@ -648,7 +719,10 @@ def verify_email(
             environment="prod"
         )
         api_key = key_res["api_key"]
-        EmailService.send_welcome_email(clean_email, user.name or "Developer", api_key)
+        try:
+            EmailService.send_welcome_email(clean_email, user.name or "Developer", api_key)
+        except Exception:
+            pass
     else:
         org = db.query(Organization).filter(Organization.id == mem.org_id).first()
         proj = db.query(Project).filter(Project.org_id == org.id).first() if org else None
@@ -662,16 +736,60 @@ def verify_email(
         )
         api_key = key_res["api_key"]
 
+    # Issue initial JWT Access Token & Set Refresh Token Cookie for instant dashboard access
+    access_token = create_access_token(
+        user_id=user.id,
+        org_id=org.id if org else "",
+        role="owner"
+    )
+
+    raw_refresh = generate_refresh_token()
+    refresh_hash = hash_refresh_token(raw_refresh)
+    refresh_record = RefreshToken(
+        id=f"rt_{secrets.token_hex(8)}",
+        user_id=user.id,
+        token_hash=refresh_hash,
+        expires_at=now + timedelta(days=settings.refresh_token_expire_days),
+        created_at=now,
+        user_agent=request.headers.get("user-agent", "")[:512],
+        ip_address=request.client.host if request.client else None
+    )
+    db.add(refresh_record)
+    user.last_login_at = now
+    db.commit()
+
+    response.set_cookie(
+        key="mb_refresh_token",
+        value=raw_refresh,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=settings.refresh_token_expire_days * 86400,
+        path="/"
+    )
+
     return {
         "status": "verified",
-        "message": "Email verified successfully! Workspace ready.",
+        "message": "Email verified successfully! Workspace ready with 3-day free trial.",
+        "access_token": access_token,
+        "token_type": "bearer",
         "api_key": api_key,
-        "user": {"email": user.email, "name": user.name, "role": "owner"},
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "role": "owner",
+            "is_super_user": bool(user.is_super_user),
+            "subscription_status": user.subscription_status or "trialing",
+            "plan_tier": user.plan_tier or "free_trial",
+            "trial_ends_at": user.trial_ends_at.isoformat() if user.trial_ends_at else None
+        },
         "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None
     }
 
 
-@router.post("/v1/auth/resend-code", summary="Resend 6-Digit Email Verification Code")
+@router.post("/v1/auth/resend-code", summary="Resend Verification Code / Token")
+@router.post("/api/v1/auth/resend-verification", summary="Resend Verification Link (Alias)")
 def resend_verification_code(
     payload: ResendCodeRequest,
     db: Session = Depends(get_db_session)
@@ -683,13 +801,27 @@ def resend_verification_code(
     if user.is_verified:
         return {"status": "already_verified", "message": "This email is already verified. Please sign in."}
 
+    now = datetime.now(timezone.utc)
     otp_code = str(secrets.randbelow(900000) + 100000)
     user.verification_code = otp_code
-    user.verification_code_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+    user.verification_code_expires_at = now + timedelta(minutes=30)
+
+    # Issue fresh 24h cryptographic token
+    raw_token = create_email_verification_token(user.id)
+    token_hash = hash_email_token(raw_token)
+    verif_token_rec = EmailVerificationToken(
+        id=f"evt_{secrets.token_hex(8)}",
+        user_id=user.id,
+        token_hash=token_hash,
+        expires_at=now + timedelta(hours=24),
+        consumed=False,
+        created_at=now
+    )
+    db.add(verif_token_rec)
     db.commit()
 
-    EmailService.send_signup_verification(clean_email, user.name or "Developer", otp_code)
-    return {"status": "sent", "message": f"Fresh verification code sent to {clean_email}."}
+    EmailService.send_verification_email(clean_email, user.name or "Developer", token=raw_token, code=otp_code)
+    return {"status": "sent", "message": f"Fresh verification link and code sent to {clean_email}."}
 
 
 @router.post("/v1/auth/forgot-password", summary="Request Password Reset Link via Resend")
@@ -735,19 +867,22 @@ def reset_password(
     return {"status": "success", "message": "Password updated successfully. You can now sign in."}
 
 
-@router.post("/v1/auth/login", summary="Self-Serve Developer Login with Password or API Key")
+@router.post("/v1/auth/login", summary="Secure Developer Login with JWT + Refresh Token")
 def self_serve_login(
     payload: LoginRequest,
+    request: Request,
+    response: Response,
     db: Session = Depends(get_db_session)
 ) -> Dict[str, Any]:
+    # --- API Key login path ---
     if payload.api_key:
         api_key = APIKeyService.verify_api_key(db, payload.api_key)
         if not api_key:
             raise HTTPException(status_code=401, detail="Invalid or revoked API key.")
         org = db.query(Organization).filter(Organization.id == api_key.org_id).first()
         mem = db.query(Membership).filter(Membership.org_id == org.id).first() if org else None
-        user_name = mem.name if (mem and mem.name and "alice" not in mem.name.lower()) else "Developer"
-        user_email = mem.email if (mem and mem.email and "alice" not in mem.email.lower()) else "developer@company.internal"
+        user_name = mem.name if (mem and mem.name) else "Developer"
+        user_email = mem.email if (mem and mem.email) else ""
         return {
             "status": "authenticated",
             "auth_type": "api_key",
@@ -758,60 +893,110 @@ def self_serve_login(
             "user": {"name": user_name, "email": user_email, "role": api_key.role}
         }
 
-    if payload.email:
-        clean_email = payload.email.strip().lower()
-        if not payload.password:
-            raise HTTPException(status_code=400, detail="Password is required to sign in.")
-
-        user = db.query(UserAccount).filter(UserAccount.email == clean_email).first()
-        if not user:
-            raise HTTPException(
-                status_code=404,
-                detail="No account found with this email. Please sign up to create your workspace."
-            )
-
-        if not verify_password(user.password_hash, payload.password):
-            raise HTTPException(status_code=401, detail="Incorrect email or password.")
-
-        if not user.is_verified:
-            return {
-                "status": "unverified",
-                "email": clean_email,
-                "message": "Please verify your email address before logging in."
-            }
-
-        mem = db.query(Membership).filter(Membership.email.ilike(clean_email)).first()
-        if not mem:
-            raise HTTPException(
-                status_code=403,
-                detail="No active workspace found for this account. Please sign up to create a workspace."
-            )
-
-        user_name = user.name or mem.name or "Developer"
-        org = db.query(Organization).filter(Organization.id == mem.org_id).first()
-        proj = db.query(Project).filter(Project.org_id == org.id).first() if org else None
-        key_res = APIKeyService.generate_api_key(
-            db=db,
-            org_id=org.id if org else "org_default",
-            name=f"Session Key {secrets.token_hex(2)}",
-            role=mem.role,
-            project_id=proj.id if proj else None,
-            environment="prod"
+    # --- Email + Password login path ---
+    if not payload.email:
+        raise HTTPException(
+            status_code=400,
+            detail="Please enter your work email and password, or provide an active API key."
         )
+
+    clean_email = payload.email.strip().lower()
+    if not payload.password:
+        raise HTTPException(status_code=400, detail="Password is required to sign in.")
+
+    user = db.query(UserAccount).filter(UserAccount.email == clean_email).first()
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="No account found with this email. Please sign up to create your workspace."
+        )
+
+    if not verify_password(payload.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Incorrect email or password.")
+
+    # Email verification gate
+    if not user.is_verified:
         return {
-            "status": "authenticated",
-            "auth_type": "email_password",
-            "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None,
-            "project_id": proj.id if proj else None,
-            "role": mem.role,
-            "api_key": key_res["api_key"],
-            "user": {"name": user_name, "email": clean_email, "role": mem.role}
+            "status": "unverified",
+            "email": clean_email,
+            "message": "Please verify your email before logging in."
         }
 
-    raise HTTPException(
-        status_code=400,
-        detail="Please enter your work email and password, or provide an active API key."
+    # Find membership and org
+    mem = db.query(Membership).filter(Membership.email.ilike(clean_email)).first()
+    if not mem:
+        raise HTTPException(
+            status_code=403,
+            detail="No active workspace found for this account. Please contact support."
+        )
+
+    org = db.query(Organization).filter(Organization.id == mem.org_id).first()
+    proj = db.query(Project).filter(Project.org_id == org.id).first() if org else None
+
+    # Generate JWT access token
+    access_token = create_access_token(
+        user_id=user.id,
+        org_id=org.id if org else "",
+        role=mem.role,
+        remember_me=payload.remember_me
     )
+
+    # Generate refresh token
+    raw_refresh = generate_refresh_token()
+    refresh_hash = hash_refresh_token(raw_refresh)
+    now = datetime.now(timezone.utc)
+
+    refresh_record = RefreshToken(
+        id=f"rt_{secrets.token_hex(8)}",
+        user_id=user.id,
+        token_hash=refresh_hash,
+        expires_at=now + timedelta(days=settings.refresh_token_expire_days),
+        created_at=now,
+        user_agent=request.headers.get("user-agent", "")[:512],
+        ip_address=request.client.host if request.client else None
+    )
+    db.add(refresh_record)
+
+    # Update last login
+    user.last_login_at = now
+    user.updated_at = now
+    db.commit()
+
+    # Also generate an API key for backward compatibility with dashboard
+    key_res = APIKeyService.generate_api_key(
+        db=db,
+        org_id=org.id if org else "org_default",
+        name=f"Session Key {secrets.token_hex(2)}",
+        role=mem.role,
+        project_id=proj.id if proj else None,
+        environment="prod"
+    )
+
+    # Set refresh token as httpOnly secure cookie
+    cookie_max_age = settings.refresh_token_expire_days * 86400
+    response.set_cookie(
+        key="mb_refresh_token",
+        value=raw_refresh,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=cookie_max_age,
+        path="/"
+    )
+
+    user_name = user.name or mem.name or "Developer"
+    return {
+        "status": "authenticated",
+        "auth_type": "email_password",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": settings.access_token_expire_minutes * 60 if not payload.remember_me else 30 * 86400,
+        "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None,
+        "project_id": proj.id if proj else None,
+        "role": mem.role,
+        "api_key": key_res["api_key"],
+        "user": {"name": user_name, "email": clean_email, "role": mem.role}
+    }
 
 
 @router.get("/v1/auth/config", summary="Get Public Auth Configuration")
@@ -823,19 +1008,51 @@ def get_auth_config() -> Dict[str, Any]:
     }
 
 
-@router.post("/v1/auth/google", summary="Google OAuth / Single Sign-On Authentication")
+@router.post("/v1/auth/google", summary="Google OAuth 2.0 Social Login")
+@router.post("/api/v1/auth/google", summary="Google OAuth 2.0 Social Login (Alias)")
 def google_auth(
     payload: GoogleAuthRequest,
+    response: Response,
+    request: Request,
     db: Session = Depends(get_db_session)
 ) -> Dict[str, Any]:
     email = None
     name = payload.name
     picture = payload.picture
 
-    # If Google ID Token JWT is provided, verify it
-    if payload.credential:
+    # 1. OAuth 2.0 Authorization Code Exchange (Frontend redirect flow)
+    if payload.code:
+        token_url = "https://oauth2.googleapis.com/token"
+        redirect_uri = payload.redirect_uri or settings.google_redirect_uri
+        token_payload = {
+            "code": payload.code.strip(),
+            "client_id": settings.google_client_id,
+            "client_secret": settings.google_client_secret,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code"
+        }
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                res = client.post(token_url, data=token_payload)
+                if res.status_code == 200:
+                    token_data = res.json()
+                    access_token_google = token_data.get("access_token")
+                    if access_token_google:
+                        userinfo_res = client.get(
+                            "https://www.googleapis.com/oauth2/v3/userinfo",
+                            headers={"Authorization": f"Bearer {access_token_google}"}
+                        )
+                        if userinfo_res.status_code == 200:
+                            profile = userinfo_res.json()
+                            email = profile.get("email")
+                            name = profile.get("name") or name
+                            picture = profile.get("picture") or picture
+        except Exception:
+            pass
+
+    # 2. Google Identity Services ID Token JWT Verification
+    if not email and payload.credential:
         token = payload.credential.strip()
-        # 1. Try Google's tokeninfo endpoint for cryptographic signature verification
         try:
             with httpx.Client(timeout=5.0) as client:
                 res = client.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={token}")
@@ -851,7 +1068,7 @@ def google_auth(
         except Exception:
             pass
 
-        # 2. Fallback: Parse JWT payload directly if tokeninfo network failed or in dev/mock
+        # Fallback: Parse JWT payload directly if tokeninfo network failed
         if not email:
             try:
                 parts = token.split(".")
@@ -865,22 +1082,29 @@ def google_auth(
             except Exception:
                 pass
 
-    # Direct email fallback (e.g. dev/demo testing or client-side profile pass)
+    # Direct email fallback only allowed in development/testing
     if not email and payload.email:
-        email = payload.email.strip().lower()
+        if settings.environment in ("development", "testing", "local"):
+            email = payload.email.strip().lower()
 
     if not email:
         raise HTTPException(
             status_code=400,
-            detail="Unable to verify Google credentials. Please ensure a valid Google account is selected."
+            detail="Unable to verify Google credentials. Please select a valid Google account."
         )
 
     clean_email = email.strip().lower()
     user_name = name or (" ".join([part.capitalize() for part in clean_email.split('@')[0].replace('.', ' ').replace('_', ' ').replace('-', ' ').split()]) or "Developer")
 
+    # Superuser check
+    superuser_emails = [e.strip().lower() for e in settings.superuser_emails.split(",") if e.strip()]
+    is_super = bool(clean_email in superuser_emails or clean_email == "abdullahzaid509@gmail.com")
+
     # Look up or create UserAccount
     user = db.query(UserAccount).filter(UserAccount.email == clean_email).first()
     now = datetime.now(timezone.utc)
+    trial_expiry = now + timedelta(days=3)
+
     if not user:
         user = UserAccount(
             id=f"usr_{secrets.token_hex(8)}",
@@ -888,18 +1112,28 @@ def google_auth(
             name=user_name,
             password_hash=hash_password(secrets.token_hex(24)),
             is_verified=True,
+            is_super_user=is_super,
+            subscription_status="trialing",
+            plan_tier="free_trial",
+            trial_ends_at=trial_expiry,
+            last_login_at=now,
             created_at=now,
             updated_at=now
         )
         db.add(user)
         db.commit()
     else:
-        # Google sign-in guarantees verified email
-        if not user.is_verified:
-            user.is_verified = True
-            user.verification_code = None
+        user.is_verified = True
+        user.verification_code = None
+        user.last_login_at = now
         if not user.name and user_name:
             user.name = user_name
+        if is_super:
+            user.is_super_user = True
+        if not user.trial_ends_at:
+            user.subscription_status = "trialing"
+            user.plan_tier = "free_trial"
+            user.trial_ends_at = trial_expiry
         user.updated_at = now
         db.commit()
 
@@ -914,7 +1148,7 @@ def google_auth(
             name=org_name,
             slug=clean_slug,
             tier="starter",
-            subscription_status="active",
+            subscription_status="trialing",
             created_at=now
         )
         db.add(org)
@@ -968,17 +1202,189 @@ def google_auth(
         )
         api_key = key_res["api_key"]
 
+    # Issue JWT access token & set secure refresh token cookie
+    access_token = create_access_token(
+        user_id=user.id,
+        org_id=org.id if org else "",
+        role="owner"
+    )
+
+    raw_refresh = generate_refresh_token()
+    refresh_hash = hash_refresh_token(raw_refresh)
+    refresh_record = RefreshToken(
+        id=f"rt_{secrets.token_hex(8)}",
+        user_id=user.id,
+        token_hash=refresh_hash,
+        expires_at=now + timedelta(days=settings.refresh_token_expire_days),
+        created_at=now,
+        user_agent=request.headers.get("user-agent", "")[:512],
+        ip_address=request.client.host if request.client else None
+    )
+    db.add(refresh_record)
+    db.commit()
+
+    response.set_cookie(
+        key="mb_refresh_token",
+        value=raw_refresh,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=settings.refresh_token_expire_days * 86400,
+        path="/"
+    )
+
     return {
         "status": "authenticated",
         "auth_type": "google",
         "message": "Successfully authenticated with Google.",
+        "access_token": access_token,
+        "token_type": "bearer",
         "api_key": api_key,
         "user": {
+            "id": user.id,
             "email": clean_email,
             "name": user.name or user_name,
             "role": "owner",
-            "picture": picture
+            "picture": picture,
+            "is_super_user": bool(user.is_super_user),
+            "subscription_status": user.subscription_status or "trialing",
+            "plan_tier": user.plan_tier or "free_trial",
+            "trial_ends_at": user.trial_ends_at.isoformat() if user.trial_ends_at else None
         },
         "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None,
         "project_id": proj.id if 'proj' in locals() and proj else None
     }
+
+
+@router.post("/v1/auth/refresh", summary="Refresh Access Token using Refresh Cookie")
+def refresh_access_token(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db_session)
+) -> Dict[str, Any]:
+    raw_token = request.cookies.get("mb_refresh_token")
+    if not raw_token:
+        raise HTTPException(status_code=401, detail="No refresh token provided. Please log in.")
+
+    token_hash = hash_refresh_token(raw_token)
+    now = datetime.now(timezone.utc)
+
+    rt = db.query(RefreshToken).filter(
+        RefreshToken.token_hash == token_hash,
+        RefreshToken.revoked_at == None
+    ).first()
+
+    if not rt:
+        raise HTTPException(status_code=401, detail="Invalid or revoked refresh token. Please log in again.")
+
+    exp = rt.expires_at
+    if exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    if now > exp:
+        rt.revoked_at = now
+        db.commit()
+        raise HTTPException(status_code=401, detail="Refresh token expired. Please log in again.")
+
+    # Get user and membership
+    user = db.query(UserAccount).filter(UserAccount.id == rt.user_id).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User account not found.")
+
+    mem = db.query(Membership).filter(Membership.email.ilike(user.email)).first()
+    org_id = mem.org_id if mem else ""
+    role = mem.role if mem else "developer"
+
+    # Issue new access token
+    access_token = create_access_token(
+        user_id=user.id,
+        org_id=org_id,
+        role=role
+    )
+
+    # Rotate refresh token (revoke old, issue new)
+    rt.revoked_at = now
+    new_raw = generate_refresh_token()
+    new_hash = hash_refresh_token(new_raw)
+    new_rt = RefreshToken(
+        id=f"rt_{secrets.token_hex(8)}",
+        user_id=user.id,
+        token_hash=new_hash,
+        expires_at=now + timedelta(days=settings.refresh_token_expire_days),
+        created_at=now,
+        user_agent=request.headers.get("user-agent", "")[:512],
+        ip_address=request.client.host if request.client else None
+    )
+    db.add(new_rt)
+    db.commit()
+
+    response.set_cookie(
+        key="mb_refresh_token",
+        value=new_raw,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=settings.refresh_token_expire_days * 86400,
+        path="/"
+    )
+
+    org = db.query(Organization).filter(Organization.id == org_id).first() if org_id else None
+    return {
+        "status": "refreshed",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": settings.access_token_expire_minutes * 60,
+        "user": {"id": user.id, "email": user.email, "name": user.name, "role": role},
+        "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None
+    }
+
+
+@router.post("/v1/auth/logout", summary="Logout and Invalidate Refresh Token")
+def logout(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db_session)
+) -> Dict[str, Any]:
+    raw_token = request.cookies.get("mb_refresh_token")
+    if raw_token:
+        token_hash = hash_refresh_token(raw_token)
+        rt = db.query(RefreshToken).filter(
+            RefreshToken.token_hash == token_hash,
+            RefreshToken.revoked_at == None
+        ).first()
+        if rt:
+            rt.revoked_at = datetime.now(timezone.utc)
+            db.commit()
+
+    response.delete_cookie("mb_refresh_token", path="/")
+    return {"status": "logged_out", "message": "Successfully logged out."}
+
+
+@router.get("/v1/auth/me", summary="Get Current Authenticated User Profile")
+def get_current_user(
+    request: Request,
+    db: Session = Depends(get_db_session)
+) -> Dict[str, Any]:
+    # Try Authorization header first
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+        payload = decode_access_token(token)
+        if payload:
+            user = db.query(UserAccount).filter(UserAccount.id == payload["sub"]).first()
+            if user:
+                org = db.query(Organization).filter(Organization.id == payload.get("org_id")).first()
+                return {
+                    "authenticated": True,
+                    "user": {
+                        "id": user.id,
+                        "email": user.email,
+                        "name": user.name,
+                        "role": payload.get("role", "developer"),
+                        "email_verified": user.is_verified,
+                        "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None
+                    },
+                    "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None
+                }
+
+    raise HTTPException(status_code=401, detail="Not authenticated. Please log in.")
+

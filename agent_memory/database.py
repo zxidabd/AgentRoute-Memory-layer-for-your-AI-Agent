@@ -131,6 +131,104 @@ def init_db():
             except Exception:
                 pass
 
+        # Auth system columns
+        new_cols_users = [
+            ("last_login_at", "TIMESTAMP"),
+            ("is_super_user", "BOOLEAN DEFAULT 0"),
+            ("subscription_status", "VARCHAR(50) DEFAULT 'trialing'"),
+            ("plan_tier", "VARCHAR(50) DEFAULT 'free_trial'"),
+            ("trial_ends_at", "TIMESTAMP"),
+        ]
+        for col_name, col_def in new_cols_users:
+            try:
+                conn.execute(text(f"ALTER TABLE user_accounts ADD COLUMN {col_name} {col_def};"))
+                conn.commit()
+            except Exception:
+                pass
+
+        # Ensure superuser status for designated admin
+        try:
+            conn.execute(text("UPDATE user_accounts SET is_super_user = 1 WHERE email = 'abdullahzaid509@gmail.com';"))
+            conn.commit()
+        except Exception:
+            pass
+
+        # Create refresh_tokens table if not exists
+        try:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS refresh_tokens (
+                    id VARCHAR(64) PRIMARY KEY,
+                    user_id VARCHAR(64) NOT NULL REFERENCES user_accounts(id) ON DELETE CASCADE,
+                    token_hash VARCHAR(128) UNIQUE NOT NULL,
+                    expires_at TIMESTAMP NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    revoked_at TIMESTAMP,
+                    user_agent VARCHAR(512),
+                    ip_address VARCHAR(64)
+                );
+            """))
+            conn.commit()
+        except Exception:
+            pass
+
+        try:
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_refresh_tokens_user_id ON refresh_tokens(user_id);"))
+            conn.commit()
+        except Exception:
+            pass
+
+        try:
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_refresh_tokens_token_hash ON refresh_tokens(token_hash);"))
+            conn.commit()
+        except Exception:
+            pass
+
+        # Create email_verification_tokens table if not exists
+        try:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS email_verification_tokens (
+                    id VARCHAR(64) PRIMARY KEY,
+                    user_id VARCHAR(64) NOT NULL REFERENCES user_accounts(id) ON DELETE CASCADE,
+                    token_hash VARCHAR(128) UNIQUE NOT NULL,
+                    expires_at TIMESTAMP NOT NULL,
+                    consumed BOOLEAN DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            conn.commit()
+        except Exception:
+            pass
+
+        try:
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_email_verif_tokens_user ON email_verification_tokens(user_id);"))
+            conn.commit()
+        except Exception:
+            pass
+
+        try:
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_email_verif_tokens_hash ON email_verification_tokens(token_hash);"))
+            conn.commit()
+        except Exception:
+            pass
+
+        # Create contact_messages table if not exists
+        try:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS contact_messages (
+                    id VARCHAR(64) PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    email VARCHAR(255) NOT NULL,
+                    subject VARCHAR(255) NOT NULL,
+                    message TEXT NOT NULL,
+                    user_id VARCHAR(64),
+                    ip_address VARCHAR(64),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            conn.commit()
+        except Exception:
+            pass
+
         new_cols_usage = [
             ("event_type", "VARCHAR(64) DEFAULT 'RECALL_QUERY'"),
             ("units_billed", "INTEGER DEFAULT 1"),

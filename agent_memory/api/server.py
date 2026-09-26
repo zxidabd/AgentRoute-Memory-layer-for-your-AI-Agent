@@ -13,6 +13,8 @@ from .routes.v1_privacy import router as v1_privacy_router
 from .routes.v1_webhooks import router as v1_webhooks_router
 from .routes.v1_billing import router as v1_billing_router
 from .routes.v1_workspaces import router as v1_workspaces_router
+from .routes.v1_contact import router as v1_contact_router
+from .routes.v1_admin import router as v1_admin_router
 from .routes.v1_compliance import router as v1_compliance_router
 from .routes.v1_analytics import router as v1_analytics_router
 from .routes.v1_data_assets import router as v1_data_assets_router
@@ -102,6 +104,8 @@ app.include_router(v1_privacy_router)
 app.include_router(v1_webhooks_router)
 app.include_router(v1_billing_router)
 app.include_router(v1_workspaces_router)
+app.include_router(v1_contact_router)
+app.include_router(v1_admin_router)
 app.include_router(v1_compliance_router)
 app.include_router(v1_analytics_router)
 app.include_router(v1_data_assets_router)
