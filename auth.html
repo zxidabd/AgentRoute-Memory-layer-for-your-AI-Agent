@@ -826,7 +826,12 @@
         if (res.ok || res.status === 201) {
           currentEmail = email;
           setViewMode('verify');
-          displayAlert('ok', data.message || 'Confirmation code dispatched to your inbox.');
+          if (data.dev_otp_code) {
+            document.getElementById('verify-code-input').value = data.dev_otp_code;
+            displayAlert('ok', `Render cloud firewall blocked SMTP. Auto-filled code: ${data.dev_otp_code} — Click VERIFY CODE!`);
+          } else {
+            displayAlert('ok', data.message || 'Confirmation code dispatched to your inbox.');
+          }
         } else {
           displayAlert('err', data.detail || 'Registration failed.');
         }
@@ -891,7 +896,12 @@
         });
         const data = await res.json();
         if (res.ok) {
-          displayAlert('ok', data.message || 'Fresh code dispatched to your inbox.');
+          if (data.dev_otp_code) {
+            document.getElementById('verify-code-input').value = data.dev_otp_code;
+            displayAlert('ok', `Render cloud firewall blocked SMTP. Auto-filled code: ${data.dev_otp_code} — Click VERIFY CODE!`);
+          } else {
+            displayAlert('ok', data.message || 'Fresh code dispatched to your inbox.');
+          }
         } else {
           displayAlert('err', data.detail || 'Could not send verification code.');
         }

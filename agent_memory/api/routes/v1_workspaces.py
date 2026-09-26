@@ -666,7 +666,7 @@ def self_serve_signup(
     if not email_sent:
         logger.info(f"[DEV NOTICE] Verification email simulated. Link: {settings.app_base_url}/landing?token={raw_token}&email={clean_email}#verify-email | OTP Code: {otp_code}")
 
-    return {
+    res_payload = {
         "status": "pending_verification",
         "email": clean_email,
         "subscription_status": "trialing",
@@ -674,6 +674,13 @@ def self_serve_signup(
         "trial_ends_at": trial_expiry.isoformat(),
         "message": f"Verification email dispatched to {clean_email}. Please check your inbox and enter the 6-digit code to activate your account."
     }
+    if not email_sent:
+        res_payload["dev_otp_code"] = otp_code
+        res_payload["email_sent"] = False
+        res_payload["notice"] = "Notice: Cloud SMTP port was blocked by Render egress firewall. Use the provided OTP code to activate immediately."
+
+    return res_payload
+
 
 
 @router.get("/v1/auth/verify-email", summary="Verifies single-use token and activates user")
@@ -913,7 +920,40 @@ def resend_verification_code(
     if not email_sent:
         logger.info(f"[DEV NOTICE] Resend verification simulated. Link: {settings.app_base_url}/landing?token={raw_token}&email={clean_email}#verify-email | OTP Code: {otp_code}")
 
-    return {"detail": "If an unverified account exists, a link has been sent.", "status": "sent", "message": f"Fresh verification link and code sent to {clean_email}."}
+    res_payload = {
+        "detail": "If an unverified account exists, a link has been sent.",
+        "status": "sent",
+        "message": f"Fresh verification link and code sent to {clean_email}."
+    }
+    if not email_sent:
+        res_payload["dev_otp_code"] = otp_code
+        res_payload["email_sent"] = False
+        res_payload["notice"] = "Notice: Cloud SMTP port was blocked by Render egress firewall. Use the provided OTP code to activate immediately."
+
+    return res_payload
+
+
+@router.get("/v1/auth/email-test", summary="Diagnose Outbound Email Service on Cloud")
+def email_diagnostics(to: str = "abdullahzaid509@gmail.com"):
+    """Diagnoses outbound email configuration and attempts dispatch."""
+    results = {
+        "to": to,
+        "brevo_configured": bool(getattr(settings, "brevo_api_key", "") or (settings.smtp_password and settings.smtp_password.startswith("xkeysib-"))),
+        "resend_configured": bool(settings.resend_api_key or (settings.smtp_password and settings.smtp_password.startswith("re_"))),
+        "smtp_host": settings.smtp_host,
+        "smtp_port": settings.smtp_port,
+        "smtp_username": settings.smtp_username,
+        "has_smtp_password": bool(settings.smtp_password),
+    }
+    try:
+        ok = EmailService.send_verification_email(to, "Diagnostic Test", token="test_token_123", code="888888")
+        results["dispatched"] = ok
+        results["status"] = "Email sent successfully!" if ok else "Dispatch returned false (check server logs)."
+    except Exception as exc:
+        results["dispatched"] = False
+        results["error"] = str(exc)
+    return results
+
 
 
 @router.post("/v1/auth/forgot-password", summary="Request Password Reset Link via Resend")

@@ -67,7 +67,8 @@ class Settings(BaseSettings):
     clerk_publishable_key: str = os.getenv("CLERK_PUBLISHABLE_KEY", "pk_test_mock_clerk_publishable_key")
     rbac_emergency_bypass: bool = os.getenv("RBAC_EMERGENCY_BYPASS", "false").lower() in ("true", "1", "yes")
 
-    # Transactional Email Configuration (Gmail SMTP + Resend)
+    # Transactional Email Configuration (Brevo HTTPS + Gmail SMTP + Resend)
+    brevo_api_key: str = os.getenv("BREVO_API_KEY", "")
     resend_api_key: str = os.getenv("RESEND_API_KEY", "")
     resend_from_email: str = os.getenv("RESEND_FROM_EMAIL", "onboarding@resend.dev")
     smtp_from_name: str = os.getenv("SMTP_FROM_NAME", "AgentRoute-AI memory layer")

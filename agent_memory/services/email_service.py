@@ -50,12 +50,12 @@ class EmailService:
                 sender_addr = str(sender_addr).split("<")[1].split(">")[0].strip()
 
             if server_port == 465:
-                with smtplib.SMTP_SSL(server_host, server_port, timeout=12.0) as server:
+                with smtplib.SMTP_SSL(server_host, server_port, timeout=4.0) as server:
                     if username and password:
                         server.login(username, password)
                     server.sendmail(sender_addr, [to_email], msg.as_string())
             else:
-                with smtplib.SMTP(server_host, server_port, timeout=12.0) as server:
+                with smtplib.SMTP(server_host, server_port, timeout=4.0) as server:
                     server.starttls()
                     if username and password:
                         server.login(username, password)
@@ -69,24 +69,45 @@ class EmailService:
 
     @classmethod
     def _dispatch_email(cls, to_email: str, subject: str, html_body: str) -> bool:
-        """Attempts Gmail SMTP first if configured; then Resend REST API; then fallback."""
+        """Attempts Brevo HTTPS API -> Resend HTTPS API -> Gmail SMTP -> Fallback."""
         if settings.environment in ("testing", "test"):
             return True
 
-        # 1. If SMTP password / Gmail is configured, prioritize SMTP (requires NO custom domain!)
-        server_host = (getattr(settings, "smtp_host", "") or settings.smtp_server or "").lower()
-        if settings.smtp_password and ("gmail.com" in server_host or not settings.resend_api_key.startswith("re_")):
-            ok = cls._send_smtp_fallback(to_email, subject, html_body)
-            if ok:
-                return True
-
-        # 2. Try Resend REST API if key starts with re_
-        api_key = settings.resend_api_key.strip() if settings.resend_api_key else ""
-        from_header = cls._get_from_header()
-        if api_key.startswith("re_"):
+        # 1. Try Brevo HTTPS REST API (Port 443 - never blocked by Render, sends from Gmail to any recipient)
+        brevo_key = (getattr(settings, "brevo_api_key", "") or settings.smtp_password or "").strip()
+        if brevo_key.startswith("xkeysib-"):
             try:
-                # If custom domain agentroute.co is unverified on Resend, fallback to onboarding@resend.dev
-                resend_from = "AgentRoute <onboarding@resend.dev>" if "agentroute.co" in from_header else from_header
+                from_email = settings.smtp_username or "abdullahzaid509@gmail.com"
+                from_name = settings.smtp_from_name or "AgentRoute-AI"
+                payload = {
+                    "sender": {"name": from_name, "email": from_email},
+                    "to": [{"email": to_email}],
+                    "subject": subject,
+                    "htmlContent": html_body
+                }
+                headers = {
+                    "api-key": brevo_key,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                }
+                with httpx.Client(timeout=8.0) as client:
+                    resp = client.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
+                    if resp.status_code in (200, 201):
+                        logger.info(f"Delivered email to {to_email} via Brevo API (port 443).")
+                        return True
+                    logger.warning(f"Brevo API error [{resp.status_code}]: {resp.text}")
+            except Exception as exc:
+                logger.warning(f"Brevo HTTP request failed: {exc}")
+
+        # 2. Try Resend REST API (Port 443 - never blocked by cloud firewalls)
+        resend_key = (settings.resend_api_key or "").strip()
+        if not resend_key and settings.smtp_password and settings.smtp_password.startswith("re_"):
+            resend_key = settings.smtp_password.strip()
+
+        if resend_key.startswith("re_"):
+            try:
+                from_header = cls._get_from_header()
+                resend_from = "AgentRoute <onboarding@resend.dev>" if ("agentroute.co" in from_header or "gmail.com" in from_header) else from_header
                 payload = {
                     "from": resend_from,
                     "to": [to_email],
@@ -94,13 +115,13 @@ class EmailService:
                     "html": html_body
                 }
                 headers = {
-                    "Authorization": f"Bearer {api_key}",
+                    "Authorization": f"Bearer {resend_key}",
                     "Content-Type": "application/json"
                 }
-                with httpx.Client(timeout=10.0) as client:
+                with httpx.Client(timeout=8.0) as client:
                     resp = client.post(cls.RESEND_API_URL, json=payload, headers=headers)
                     if resp.status_code in (200, 201):
-                        logger.info(f"Delivered email to {to_email} via Resend. ID: {resp.json().get('id')}")
+                        logger.info(f"Delivered email to {to_email} via Resend API (port 443). ID: {resp.json().get('id')}")
                         return True
                     elif resp.status_code in (403, 422) and "resend.dev" not in resend_from:
                         payload["from"] = "AgentRoute <onboarding@resend.dev>"
@@ -108,12 +129,15 @@ class EmailService:
                         if retry_resp.status_code in (200, 201):
                             logger.info(f"Delivered email to {to_email} via Resend fallback. ID: {retry_resp.json().get('id')}")
                             return True
+                    logger.warning(f"Resend API error [{resp.status_code}]: {resp.text}")
             except Exception as exc:
                 logger.warning(f"Resend HTTP request failed: {exc}")
 
-        # 3. Fallback to standard SMTP if not already attempted
-        if settings.smtp_password:
-            return cls._send_smtp_fallback(to_email, subject, html_body)
+        # 3. Standard SMTP (port 465 / 587 - works on local machine / VPS; may be blocked on Render free tier)
+        if settings.smtp_password and not settings.smtp_password.startswith(("re_", "xkeysib-")):
+            ok = cls._send_smtp_fallback(to_email, subject, html_body)
+            if ok:
+                return True
 
         # 4. Simulation mode for local dev when no keys set
         print(f"\n================ [EMAIL DEV SIMULATION] ================")
