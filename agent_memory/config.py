@@ -58,8 +58,8 @@ class Settings(BaseSettings):
     razorpay_key_id: str = os.getenv("RAZORPAY_KEY_ID", "rzp_test_mock_key_id_123")
     razorpay_key_secret: str = os.getenv("RAZORPAY_KEY_SECRET", "mock_razorpay_secret_key_456")
     razorpay_webhook_secret: str = os.getenv("RAZORPAY_WEBHOOK_SECRET", "mock_razorpay_webhook_secret")
-    billing_success_url: str = os.getenv("BILLING_SUCCESS_URL", "http://localhost:8000/dashboard?billing=success")
-    billing_cancel_url: str = os.getenv("BILLING_CANCEL_URL", "http://localhost:8000/dashboard?billing=cancel")
+    billing_success_url: str = os.getenv("BILLING_SUCCESS_URL", "https://agentroute-memory-layer-for-your-ai-agent.onrender.com/dashboard?billing=success")
+    billing_cancel_url: str = os.getenv("BILLING_CANCEL_URL", "https://agentroute-memory-layer-for-your-ai-agent.onrender.com/dashboard?billing=cancel")
 
     # Step 2: Auth & Team Workspaces (Clerk & RBAC)
     clerk_secret_key: str = os.getenv("CLERK_SECRET_KEY", "mock_clerk_secret_key")
@@ -75,16 +75,16 @@ class Settings(BaseSettings):
     smtp_password: str = os.getenv("SMTP_PASSWORD", "")
     smtp_server: str = os.getenv("SMTP_SERVER", "smtp.resend.com")
     smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
-    app_base_url: str = os.getenv("APP_BASE_URL", os.getenv("FRONTEND_URL", "http://localhost:8000"))
+    app_base_url: str = os.getenv("APP_BASE_URL", os.getenv("FRONTEND_URL", "https://agentroute-memory-layer-for-your-ai-agent.onrender.com"))
     support_email: str = os.getenv("SUPPORT_EMAIL", "support@agentroute.co")
 
     # Superuser Access Control
     superuser_emails: str = os.getenv("SUPERUSER_EMAILS", "abdullahzaid509@gmail.com")
 
     # Google OAuth / Identity Services (supports both standard and Google Cloud naming)
-    google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", os.getenv("GOOGLE_OAUTH_CLIENT_ID", ""))
+    google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", os.getenv("GOOGLE_OAUTH_CLIENT_ID", "761969834884-6e89s022cu4954ft8kjq5k0qiuvep8ka.apps.googleusercontent.com"))
     google_client_secret: str = os.getenv("GOOGLE_CLIENT_SECRET", os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", ""))
-    google_redirect_uri: str = os.getenv("GOOGLE_REDIRECT_URI", os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "/landing"))
+    google_redirect_uri: str = os.getenv("GOOGLE_REDIRECT_URI", os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "https://agentroute-memory-layer-for-your-ai-agent.onrender.com/landing"))
 
     # Memory Engine Hyperparameters
     decay_rate_lambda: float = 0.005  # Ebbinghaus decay per day

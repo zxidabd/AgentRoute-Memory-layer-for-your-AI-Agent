@@ -3008,12 +3008,17 @@ hits = mb.assets.recall(
     }
 
     async function handleGoogleAuth(intent) {
-      if (authConfig.google_client_id && window.google && google.accounts && google.accounts.id) {
-        google.accounts.id.initialize({
+      if (authConfig.google_client_id) {
+        const redirectUri = window.location.origin + '/landing';
+        const oauthUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
           client_id: authConfig.google_client_id,
-          callback: handleGoogleCredentialResponse
-        });
-        google.accounts.id.prompt();
+          redirect_uri: redirectUri,
+          response_type: 'code',
+          scope: 'openid email profile',
+          access_type: 'offline',
+          prompt: 'select_account'
+        }).toString();
+        window.location.href = oauthUrl;
         return;
       }
 
@@ -3356,7 +3361,7 @@ hits = mb.assets.recall(
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ code: googleCode, redirect_uri: window.location.origin + window.location.pathname })
+          body: JSON.stringify({ code: googleCode, redirect_uri: window.location.origin + '/landing' })
         }).then(r => r.json()).then(data => {
           if (data.status === 'authenticated') {
             if (data.access_token) localStorage.setItem('mb_access_token', data.access_token);

@@ -6,8 +6,11 @@ import hashlib
 import hmac
 import base64
 import json
+import logging
 import httpx
 from datetime import datetime, timezone, timedelta
+
+logger = logging.getLogger("agentroute.auth")
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field, EmailStr
 from fastapi import APIRouter, Depends, HTTPException, Request, Header, Response, status
@@ -1024,6 +1027,8 @@ def google_auth(
     if payload.code:
         token_url = "https://oauth2.googleapis.com/token"
         redirect_uri = payload.redirect_uri or settings.google_redirect_uri
+        if redirect_uri and not redirect_uri.startswith("http"):
+            redirect_uri = f"{settings.app_base_url.rstrip('/')}/{redirect_uri.lstrip('/')}"
         token_payload = {
             "code": payload.code.strip(),
             "client_id": settings.google_client_id,
@@ -1047,8 +1052,10 @@ def google_auth(
                             email = profile.get("email")
                             name = profile.get("name") or name
                             picture = profile.get("picture") or picture
-        except Exception:
-            pass
+                else:
+                    logger.warning(f"Google OAuth token exchange returned {res.status_code}: {res.text}")
+        except Exception as exc:
+            logger.warning(f"Google OAuth exchange error: {exc}")
 
     # 2. Google Identity Services ID Token JWT Verification
     if not email and payload.credential:
