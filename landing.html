@@ -2769,6 +2769,16 @@ hits = mb.assets.recall(
         </div>
       </div>
 
+      <!-- Google Auth Loading View (Replaces OTP box during Google login) -->
+      <div id="auth-google-loading-view" style="display:none; text-align:center; padding: 28px 12px;">
+        <div style="font-size:38px; margin-bottom:12px;">🔐</div>
+        <h3 style="font-size:19px; margin-bottom:8px; color:var(--color-text-primary);">Signing in with Google...</h3>
+        <p style="font-size:13px; color:var(--color-text-secondary); margin-bottom:24px; line-height:1.5;">
+          Authenticating your Google account and initializing your workspace. Please wait...
+        </p>
+        <div style="width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.15); border-top-color: #FFA114; border-radius: 50%; margin: 0 auto; animation: spin 0.8s linear infinite;"></div>
+      </div>
+
       <!-- Forgot Password View -->
       <div id="auth-forgot-view" style="display:none;">
         <h3 style="font-size:18px; margin-bottom:8px;">Forgot Password</h3>
@@ -2940,6 +2950,8 @@ hits = mb.assets.recall(
 
     function closeAuth() {
       document.getElementById('auth-modal').style.display = 'none';
+      const gl = document.getElementById('auth-google-loading-view');
+      if (gl) gl.style.display = 'none';
     }
 
     function switchAuthTab(tab) {
@@ -2949,6 +2961,8 @@ hits = mb.assets.recall(
       document.getElementById('auth-verify-view').style.display = 'none';
       document.getElementById('auth-forgot-view').style.display = 'none';
       document.getElementById('auth-reset-view').style.display = 'none';
+      const gl = document.getElementById('auth-google-loading-view');
+      if (gl) gl.style.display = 'none';
 
       if (tab === 'signin' || tab === 'login') {
         document.getElementById('modal-tab-signin').classList.add('active');
@@ -3416,11 +3430,9 @@ hits = mb.assets.recall(
         document.getElementById('auth-modal').style.display = 'flex';
         document.getElementById('auth-signin-view').style.display = 'none';
         document.getElementById('auth-signup-view').style.display = 'none';
-        document.getElementById('auth-verify-view').style.display = 'block';
-        document.getElementById('verify-email-target').innerText = 'Google Account Authorization';
-        const verifyBtn = document.getElementById('btn-submit-verify');
-        verifyBtn.innerText = 'Authenticating with Google...';
-        verifyBtn.disabled = true;
+        document.getElementById('auth-verify-view').style.display = 'none';
+        const googleLoading = document.getElementById('auth-google-loading-view');
+        if (googleLoading) googleLoading.style.display = 'block';
 
         fetch('/v1/auth/google', {
           method: 'POST',

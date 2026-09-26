@@ -604,44 +604,6 @@ def self_serve_signup(
         db.add(user)
     db.commit()
 
-    # Provision Organization, Project, and Membership IMMEDIATELY at signup (prevents missing workspace errors)
-    mem = db.query(Membership).filter(Membership.email.ilike(clean_email)).first()
-    if not mem:
-        org_name = payload.organization_name or (f"{user.name.split()[0]}'s Workspace" if (user.name and user.name.strip()) else "My Workspace")
-        base_slug = org_name.lower().replace(" ", "-").replace(".", "")
-        clean_slug = f"{base_slug}-{secrets.token_hex(3)}"
-        org = Organization(
-            id=f"org_{secrets.token_hex(6)}",
-            name=org_name,
-            slug=clean_slug,
-            tier=payload.tier or "free_trial",
-            subscription_status="trialing",
-            created_at=now
-        )
-        db.add(org)
-        db.commit()
-
-        project = Project(
-            id=f"proj_{secrets.token_hex(6)}",
-            org_id=org.id,
-            name="Production Agent",
-            environment="prod",
-            created_at=now
-        )
-        db.add(project)
-
-        mem = Membership(
-            id=f"mem_{secrets.token_hex(6)}",
-            org_id=org.id,
-            clerk_user_id=user.id,
-            email=clean_email,
-            name=user.name,
-            role="owner",
-            created_at=now
-        )
-        db.add(mem)
-        db.commit()
-
     # 2. Store 24-hour cryptographic token in email_verification_tokens
     raw_token = create_email_verification_token(user.id)
     token_hash = hash_email_token(raw_token)
@@ -767,8 +729,8 @@ def verify_email(
             id=f"org_{secrets.token_hex(6)}",
             name=org_name,
             slug=clean_slug,
-            tier="starter",
-            subscription_status="trialing",
+            tier=user.plan_tier or "free_trial",
+            subscription_status=user.subscription_status or "trialing",
             created_at=datetime.now(timezone.utc)
         )
         db.add(org)
@@ -1053,13 +1015,43 @@ def self_serve_login(
             detail="Please verify your email before logging in."
         )
 
-    # Find membership and org
+    # Find membership and org (auto-provision if user is verified)
     mem = db.query(Membership).filter(Membership.email.ilike(clean_email)).first()
     if not mem:
-        raise HTTPException(
-            status_code=403,
-            detail="No active workspace found for this account. Please contact support."
+        org_name = f"{user.name.split()[0]}'s Workspace" if (user.name and user.name.strip()) else "My Workspace"
+        base_slug = org_name.lower().replace(" ", "-").replace(".", "")
+        clean_slug = f"{base_slug}-{secrets.token_hex(3)}"
+        org = Organization(
+            id=f"org_{secrets.token_hex(6)}",
+            name=org_name,
+            slug=clean_slug,
+            tier=user.plan_tier or "free_trial",
+            subscription_status=user.subscription_status or "trialing",
+            created_at=datetime.now(timezone.utc)
         )
+        db.add(org)
+        db.commit()
+
+        project = Project(
+            id=f"proj_{secrets.token_hex(6)}",
+            org_id=org.id,
+            name="Production Agent",
+            environment="prod",
+            created_at=datetime.now(timezone.utc)
+        )
+        db.add(project)
+
+        mem = Membership(
+            id=f"mem_{secrets.token_hex(6)}",
+            org_id=org.id,
+            clerk_user_id=user.id,
+            email=clean_email,
+            name=user.name,
+            role="owner",
+            created_at=datetime.now(timezone.utc)
+        )
+        db.add(mem)
+        db.commit()
 
     org = db.query(Organization).filter(Organization.id == mem.org_id).first()
     proj = db.query(Project).filter(Project.org_id == org.id).first() if org else None

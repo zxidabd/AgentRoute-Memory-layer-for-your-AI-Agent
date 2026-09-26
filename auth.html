@@ -944,6 +944,40 @@
 
       const urlParams = new URLSearchParams(window.location.search);
       const path = window.location.pathname.toLowerCase();
+
+      // Google OAuth Redirect code handler on dedicated auth page
+      const googleCode = urlParams.get('code');
+      const googleState = urlParams.get('state');
+      if (googleCode) {
+        const loader = document.getElementById('session-loader');
+        const title = document.getElementById('loader-title');
+        if (title) title.innerText = 'Signing in with Google...';
+        if (loader) loader.style.display = 'flex';
+
+        fetch('/v1/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            code: googleCode,
+            state: googleState,
+            redirect_uri: window.location.origin + window.location.pathname
+          })
+        }).then(r => r.json()).then(data => {
+          if (data.status === 'authenticated' || data.access_token) {
+            saveSession(data);
+            window.location.href = '/dashboard';
+          } else {
+            if (loader) loader.style.display = 'none';
+            displayAlert('err', data.detail || 'Google sign-in failed.');
+          }
+        }).catch(err => {
+          if (loader) loader.style.display = 'none';
+          displayAlert('err', 'Google sign-in error: ' + err.message);
+        });
+        return;
+      }
+
       if (urlParams.get('tab') === 'signup' || path.includes('signup') || path.includes('register')) {
         setViewMode('signup');
       } else {
