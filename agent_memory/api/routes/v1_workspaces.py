@@ -603,19 +603,29 @@ def self_serve_signup(
     db.commit()
 
     # 3. Dispatch verification email with direct CTA button and backup OTP code
+    email_sent = False
     try:
-        EmailService.send_verification_email(clean_email, payload.name, token=raw_token, code=otp_code)
-    except Exception:
-        pass
+        email_sent = EmailService.send_verification_email(clean_email, payload.name, token=raw_token, code=otp_code)
+    except Exception as exc:
+        logger.warning(f"Failed to dispatch verification email: {exc}")
 
-    return {
+    resp = {
         "status": "pending_verification",
         "email": clean_email,
+        "email_delivered": bool(email_sent),
         "subscription_status": "trialing",
         "plan_tier": "free_trial",
         "trial_ends_at": trial_expiry.isoformat(),
-        "message": f"Verification email dispatched to {clean_email}. Please click the link in your inbox or enter the 6-digit code to activate your account."
+        "message": f"Verification email dispatched to {clean_email}. Please check your inbox or enter the 6-digit code."
     }
+    if not email_sent:
+        resp["dev_otp"] = otp_code
+        resp["message"] = (
+            f"Domain 'agentroute.co' is pending DNS verification on Resend. "
+            f"For sandbox testing, your OTP is: {otp_code} (or sign up with your Resend owner email: eng.zaidd11@gmail.com)"
+        )
+
+    return resp
 
 
 @router.post("/v1/auth/verify-email", summary="Confirm Email with Token or 6-Digit OTP Code")
@@ -823,8 +833,25 @@ def resend_verification_code(
     db.add(verif_token_rec)
     db.commit()
 
-    EmailService.send_verification_email(clean_email, user.name or "Developer", token=raw_token, code=otp_code)
-    return {"status": "sent", "message": f"Fresh verification link and code sent to {clean_email}."}
+    email_sent = False
+    try:
+        email_sent = EmailService.send_verification_email(clean_email, user.name or "Developer", token=raw_token, code=otp_code)
+    except Exception as exc:
+        logger.warning(f"Resend verification email exception: {exc}")
+
+    resp = {
+        "status": "sent",
+        "email_delivered": bool(email_sent),
+        "message": f"Fresh verification link and code sent to {clean_email}."
+    }
+    if not email_sent:
+        resp["dev_otp"] = otp_code
+        resp["message"] = (
+            f"Domain 'agentroute.co' is pending DNS verification on Resend. "
+            f"For sandbox testing, your OTP is: {otp_code} (or sign up with your Resend owner email: eng.zaidd11@gmail.com)"
+        )
+
+    return resp
 
 
 @router.post("/v1/auth/forgot-password", summary="Request Password Reset Link via Resend")

@@ -2750,6 +2750,7 @@ hits = mb.assets.recall(
           We sent a 6-digit confirmation code via Resend to:<br>
           <strong id="verify-email-target" style="color:var(--color-text-primary); font-size:14px;"></strong>
         </p>
+        <div id="verify-dev-hint" style="display:none; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 12px; font-size: 12px; color: #38bdf8; margin-bottom: 16px; text-align: left; line-height: 1.4;"></div>
         <form onsubmit="handleVerifyEmail(event)">
           <div class="form-group">
             <input type="text" id="verify-otp-code" class="form-input" placeholder="123456" maxlength="6" required style="font-family:'JetBrains Mono',monospace; font-size:24px; text-align:center; letter-spacing:6px; font-weight:700;">
@@ -3223,6 +3224,16 @@ hits = mb.assets.recall(
           document.getElementById('verify-email-target').innerText = email;
           document.getElementById('auth-signup-view').style.display = 'none';
           document.getElementById('auth-verify-view').style.display = 'block';
+          const hint = document.getElementById('verify-dev-hint');
+          if (data.dev_otp) {
+            document.getElementById('verify-otp-code').value = data.dev_otp;
+            if (hint) {
+              hint.innerHTML = '⚠️ <strong>Resend Notice:</strong> ' + data.message;
+              hint.style.display = 'block';
+            }
+          } else if (hint) {
+            hint.style.display = 'none';
+          }
           document.getElementById('verify-otp-code').focus();
         } else {
           alert('Signup failed: ' + (data.detail || 'Please verify your inputs'));
@@ -3286,6 +3297,14 @@ hits = mb.assets.recall(
           body: JSON.stringify({ email: pendingVerifyEmail })
         });
         const data = await resp.json();
+        const hint = document.getElementById('verify-dev-hint');
+        if (data.dev_otp) {
+          document.getElementById('verify-otp-code').value = data.dev_otp;
+          if (hint) {
+            hint.innerHTML = '⚠️ <strong>Resend Notice:</strong> ' + data.message;
+            hint.style.display = 'block';
+          }
+        }
         alert(data.message || 'Fresh verification code dispatched via Resend.');
       } catch (err) {
         alert('Resend failed: ' + err.message);
