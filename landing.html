@@ -2694,6 +2694,12 @@ hits = mb.assets.recall(
           <button type="submit" id="btn-submit-login" class="btn btn-primary" style="width:100%; margin-top:8px;">
             Sign In to Console
           </button>
+          <div id="unverified-login-banner" style="display:none; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; padding: 12px; margin-top: 14px; text-align: left;">
+            <p style="font-size: 12px; color: #fde68a; margin: 0 0 6px 0;">Email not verified yet?</p>
+            <button type="button" onclick="handleResendVerificationFromLogin()" style="font-size: 12px; text-decoration: underline; color: #fbbf24; font-weight: 600; background: none; border: none; padding: 0; cursor: pointer;">
+              Click here to resend verification link
+            </button>
+          </div>
         </form>
       </div>
 
@@ -2750,7 +2756,6 @@ hits = mb.assets.recall(
           We sent a 6-digit confirmation code via Resend to:<br>
           <strong id="verify-email-target" style="color:var(--color-text-primary); font-size:14px;"></strong>
         </p>
-        <div id="verify-dev-hint" style="display:none; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 12px; font-size: 12px; color: #38bdf8; margin-bottom: 16px; text-align: left; line-height: 1.4;"></div>
         <form onsubmit="handleVerifyEmail(event)">
           <div class="form-group">
             <input type="text" id="verify-otp-code" class="form-input" placeholder="123456" maxlength="6" required style="font-family:'JetBrains Mono',monospace; font-size:24px; text-align:center; letter-spacing:6px; font-weight:700;">
@@ -3009,6 +3014,22 @@ hits = mb.assets.recall(
     }
 
     async function handleGoogleAuth(intent) {
+      try {
+        const redirectUri = window.location.origin + '/landing';
+        const res = await fetch(`/v1/auth/google?redirect_uri=${encodeURIComponent(redirectUri)}`, {
+          credentials: 'include'
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.url) {
+            window.location.href = data.url;
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Backend OAuth URL generation error:', e);
+      }
+
       if (authConfig.google_client_id) {
         const redirectUri = window.location.origin + '/landing';
         const oauthUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
@@ -3017,7 +3038,7 @@ hits = mb.assets.recall(
           response_type: 'code',
           scope: 'openid email profile',
           access_type: 'offline',
-          prompt: 'select_account'
+          prompt: 'consent'
         }).toString();
         window.location.href = oauthUrl;
         return;
@@ -3149,14 +3170,12 @@ hits = mb.assets.recall(
             localStorage.setItem('mb_user_name', guessedName);
           }
           window.location.href = '/dashboard';
-        } else if (resp.status === 403) {
-          // Unverified email - show verification view
+        } else if (resp.status === 403 || (data.detail && data.detail.toLowerCase().includes('verify your email'))) {
+          // Unverified email - show inline resend banner & notification
           pendingVerifyEmail = email;
-          document.getElementById('verify-email-target').innerText = pendingVerifyEmail;
-          document.getElementById('auth-signin-view').style.display = 'none';
-          document.getElementById('auth-verify-view').style.display = 'block';
-          // Auto-trigger resend
-          handleResendOtp(null);
+          const banner = document.getElementById('unverified-login-banner');
+          if (banner) banner.style.display = 'block';
+          alert(data.detail || 'Please verify your email before logging in.');
         } else {
           alert('Login failed: ' + (data.detail || data.error?.message || 'Incorrect email or password.'));
         }
@@ -3165,6 +3184,25 @@ hits = mb.assets.recall(
       } finally {
         btn.innerText = 'Sign In to Console';
         btn.disabled = false;
+      }
+    }
+
+    async function handleResendVerificationFromLogin() {
+      const email = document.getElementById('login-email').value.trim() || pendingVerifyEmail;
+      if (!email) {
+        alert('Please enter your email above.');
+        return;
+      }
+      try {
+        const resp = await fetch('/v1/auth/resend-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email })
+        });
+        const data = await resp.json();
+        alert(data.detail || data.message || 'If an unverified account exists, a link has been sent.');
+      } catch (e) {
+        alert('Could not resend link: ' + e.message);
       }
     }
 
@@ -3224,19 +3262,10 @@ hits = mb.assets.recall(
           document.getElementById('verify-email-target').innerText = email;
           document.getElementById('auth-signup-view').style.display = 'none';
           document.getElementById('auth-verify-view').style.display = 'block';
-          const hint = document.getElementById('verify-dev-hint');
-          if (data.dev_otp) {
-            document.getElementById('verify-otp-code').value = data.dev_otp;
-            if (hint) {
-              hint.innerHTML = '⚠️ <strong>Resend Notice:</strong> ' + data.message;
-              hint.style.display = 'block';
-            }
-          } else if (hint) {
-            hint.style.display = 'none';
-          }
+          document.getElementById('verify-otp-code').value = '';
           document.getElementById('verify-otp-code').focus();
         } else {
-          alert('Signup failed: ' + (data.detail || 'Please verify your inputs'));
+          alert('Signup failed: ' + (data.detail || 'Please check your inputs and try again.'));
         }
       } catch (err) {
         alert('Network error during signup: ' + err.message);
@@ -3264,6 +3293,9 @@ hits = mb.assets.recall(
           document.getElementById('auth-verify-view').style.display = 'none';
           document.getElementById('auth-success-view').style.display = 'block';
 
+          if (data.access_token) {
+            localStorage.setItem('mb_access_token', data.access_token);
+          }
           if (data.api_key) {
             document.getElementById('created-key-text').innerText = data.api_key;
             localStorage.setItem('mb_api_key', data.api_key);
@@ -3274,7 +3306,7 @@ hits = mb.assets.recall(
             localStorage.setItem('mb_user_email', data.user.email);
           }
         } else {
-          alert('Verification failed: ' + (data.detail || 'Invalid or expired code'));
+          alert('Verification failed: ' + (data.detail || 'Invalid or expired verification code.'));
         }
       } catch (err) {
         alert('Verification error: ' + err.message);
@@ -3297,15 +3329,11 @@ hits = mb.assets.recall(
           body: JSON.stringify({ email: pendingVerifyEmail })
         });
         const data = await resp.json();
-        const hint = document.getElementById('verify-dev-hint');
-        if (data.dev_otp) {
-          document.getElementById('verify-otp-code').value = data.dev_otp;
-          if (hint) {
-            hint.innerHTML = '⚠️ <strong>Resend Notice:</strong> ' + data.message;
-            hint.style.display = 'block';
-          }
+        if (resp.ok) {
+          alert(data.message || 'Fresh verification code dispatched to your inbox.');
+        } else {
+          alert('Resend failed: ' + (data.detail || 'Could not send verification code.'));
         }
-        alert(data.message || 'Fresh verification code dispatched via Resend.');
       } catch (err) {
         alert('Resend failed: ' + err.message);
       }
@@ -3366,6 +3394,7 @@ hits = mb.assets.recall(
 
       // Google OAuth Redirect code handler
       const googleCode = urlParams.get('code');
+      const googleState = urlParams.get('state');
       if (googleCode) {
         document.getElementById('auth-modal').style.display = 'flex';
         document.getElementById('auth-signin-view').style.display = 'none';
@@ -3380,7 +3409,11 @@ hits = mb.assets.recall(
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ code: googleCode, redirect_uri: window.location.origin + '/landing' })
+          body: JSON.stringify({
+            code: googleCode,
+            state: googleState,
+            redirect_uri: window.location.origin + '/landing'
+          })
         }).then(r => r.json()).then(data => {
           if (data.status === 'authenticated') {
             if (data.access_token) localStorage.setItem('mb_access_token', data.access_token);

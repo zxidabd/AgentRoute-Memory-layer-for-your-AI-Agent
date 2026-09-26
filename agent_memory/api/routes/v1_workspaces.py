@@ -13,7 +13,7 @@ from datetime import datetime, timezone, timedelta
 logger = logging.getLogger("agentroute.auth")
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field, EmailStr
-from fastapi import APIRouter, Depends, HTTPException, Request, Header, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Header, Response, Cookie, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -31,6 +31,7 @@ from ...auth.rbac_middleware import (
 from ...auth.api_key_service import APIKeyService
 from ...auth.clerk_service import ClerkService
 from ...services.email_service import EmailService
+from ...auth.oauth import get_google_auth_url, exchange_google_code
 from ...auth.security import (
     hash_password,
     verify_password,
@@ -88,11 +89,17 @@ def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
 
 
 class SignupRequest(BaseModel):
-    name: str = Field(..., description="Developer or founder full name")
+    name: Optional[str] = Field(default=None, description="Developer or founder full name")
+    full_name: Optional[str] = Field(default=None, description="User full name")
     email: EmailStr = Field(..., description="Work email address")
     password: str = Field(..., min_length=8, description="Account password (minimum 8 characters)")
     organization_name: Optional[str] = Field(default=None, description="Company or workspace name")
     tier: str = Field(default="starter", description="starter, growth, scale, enterprise")
+
+
+class RegisterRequest(SignupRequest):
+    """Alias for SignupRequest."""
+    pass
 
 
 class VerifyEmailRequest(BaseModel):
@@ -103,6 +110,11 @@ class VerifyEmailRequest(BaseModel):
 
 class ResendCodeRequest(BaseModel):
     email: EmailStr = Field(..., description="User email address")
+
+
+class ResendVerificationRequest(ResendCodeRequest):
+    """Alias for ResendCodeRequest."""
+    pass
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -123,6 +135,7 @@ class LoginRequest(BaseModel):
 
 class GoogleAuthRequest(BaseModel):
     code: Optional[str] = Field(default=None, description="OAuth 2.0 authorization code from Google redirect")
+    state: Optional[str] = Field(default=None, description="OAuth 2.0 state parameter for CSRF verification")
     redirect_uri: Optional[str] = Field(default=None, description="Redirect URI used in Google consent flow")
     credential: Optional[str] = Field(default=None, description="Google ID Token JWT from Google Identity Services")
     email: Optional[str] = Field(default=None, description="Email directly provided or decoded")
@@ -533,6 +546,8 @@ async def clerk_webhook(
 
 # --- Self-Serve Signup & Login Routes ---
 
+@router.post("/v1/auth/register", status_code=status.HTTP_201_CREATED, summary="Register Developer Account")
+@router.post("/api/v1/auth/register", status_code=status.HTTP_201_CREATED, summary="Register Developer Account (Alias)")
 @router.post("/v1/auth/signup", summary="Self-Serve Developer Signup with Verification")
 @router.post("/api/v1/auth/signup", summary="Self-Serve Developer Signup (Alias)")
 def self_serve_signup(
@@ -540,11 +555,12 @@ def self_serve_signup(
     db: Session = Depends(get_db_session)
 ) -> Dict[str, Any]:
     clean_email = payload.email.strip().lower()
+    user_name = payload.name or payload.full_name or "Developer"
 
     # Check UserAccount
     user = db.query(UserAccount).filter(UserAccount.email == clean_email).first()
     if user and user.is_verified:
-        raise HTTPException(status_code=400, detail="An account with this email already exists. Please sign in.")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already in use. Please sign in.")
 
     # 1. Generate 6-digit confirmation code & 24h cryptographic token
     otp_code = str(secrets.randbelow(900000) + 100000)
@@ -609,23 +625,42 @@ def self_serve_signup(
     except Exception as exc:
         logger.warning(f"Failed to dispatch verification email: {exc}")
 
-    resp = {
+    if not email_sent:
+        # Strictly reject registration if email could not be delivered to their inbox
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"We could not deliver the verification email to '{clean_email}'. "
+                f"Your Resend account requires verifying domain 'agentroute.co' at https://resend.com/domains before delivering to external recipients. "
+                f"To test right now, sign up using your registered Resend account email: eng.zaidd11@gmail.com"
+            )
+        )
+
+    return {
         "status": "pending_verification",
         "email": clean_email,
-        "email_delivered": bool(email_sent),
         "subscription_status": "trialing",
         "plan_tier": "free_trial",
         "trial_ends_at": trial_expiry.isoformat(),
-        "message": f"Verification email dispatched to {clean_email}. Please check your inbox or enter the 6-digit code."
+        "message": f"Verification email dispatched to {clean_email}. Please check your inbox and enter the 6-digit code to activate your account."
     }
-    if not email_sent:
-        resp["dev_otp"] = otp_code
-        resp["message"] = (
-            f"Domain 'agentroute.co' is pending DNS verification on Resend. "
-            f"For sandbox testing, your OTP is: {otp_code} (or sign up with your Resend owner email: eng.zaidd11@gmail.com)"
-        )
 
-    return resp
+
+@router.get("/v1/auth/verify-email", summary="Verifies single-use token and activates user")
+@router.get("/api/v1/auth/verify-email", summary="Verifies single-use token (Alias)")
+def verify_email_get(
+    token: str,
+    response: Response,
+    request: Request,
+    db: Session = Depends(get_db_session)
+) -> Any:
+    """Verifies single-use token and activates user."""
+    payload = VerifyEmailRequest(token=token)
+    res = verify_email(payload=payload, response=response, request=request, db=db)
+    if "text/html" in request.headers.get("accept", ""):
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/dashboard?verified=true", status_code=303)
+    return res
 
 
 @router.post("/v1/auth/verify-email", summary="Confirm Email with Token or 6-Digit OTP Code")
@@ -801,23 +836,29 @@ def verify_email(
     }
 
 
-@router.post("/v1/auth/resend-code", summary="Resend Verification Code / Token")
-@router.post("/api/v1/auth/resend-verification", summary="Resend Verification Link (Alias)")
+@router.post("/v1/auth/resend-verification", summary="Rate-limited resend verification endpoint")
+@router.post("/api/v1/auth/resend-verification", summary="Resend verification link (Alias)")
+@router.post("/v1/auth/resend-code", summary="Resend verification link (Alias)")
+@router.post("/api/v1/auth/resend-code", summary="Resend verification link (Alias)")
 def resend_verification_code(
     payload: ResendCodeRequest,
     db: Session = Depends(get_db_session)
 ) -> Dict[str, Any]:
     clean_email = payload.email.strip().lower()
     user = db.query(UserAccount).filter(UserAccount.email == clean_email).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Account not found.")
-    if user.is_verified:
-        return {"status": "already_verified", "message": "This email is already verified. Please sign in."}
+    if not user or user.is_verified:
+        return {"detail": "If an unverified account exists, a link has been sent.", "status": "sent"}
 
     now = datetime.now(timezone.utc)
+    if user.verification_code_expires_at:
+        last_sent = ensure_utc(user.updated_at)
+        if last_sent and (now - last_sent).total_seconds() < 60:
+            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Please wait 60 seconds before requesting another verification link.")
+
     otp_code = str(secrets.randbelow(900000) + 100000)
     user.verification_code = otp_code
     user.verification_code_expires_at = now + timedelta(minutes=30)
+    user.updated_at = now
 
     # Issue fresh 24h cryptographic token
     raw_token = create_email_verification_token(user.id)
@@ -839,19 +880,16 @@ def resend_verification_code(
     except Exception as exc:
         logger.warning(f"Resend verification email exception: {exc}")
 
-    resp = {
-        "status": "sent",
-        "email_delivered": bool(email_sent),
-        "message": f"Fresh verification link and code sent to {clean_email}."
-    }
     if not email_sent:
-        resp["dev_otp"] = otp_code
-        resp["message"] = (
-            f"Domain 'agentroute.co' is pending DNS verification on Resend. "
-            f"For sandbox testing, your OTP is: {otp_code} (or sign up with your Resend owner email: eng.zaidd11@gmail.com)"
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"We could not deliver the verification email to '{clean_email}'. "
+                f"Please verify domain 'agentroute.co' on https://resend.com/domains or test with your Resend email: eng.zaidd11@gmail.com."
+            )
         )
 
-    return resp
+    return {"detail": "If an unverified account exists, a link has been sent.", "status": "sent", "message": f"Fresh verification link and code sent to {clean_email}."}
 
 
 @router.post("/v1/auth/forgot-password", summary="Request Password Reset Link via Resend")
@@ -946,11 +984,10 @@ def self_serve_login(
 
     # Email verification gate
     if not user.is_verified:
-        return {
-            "status": "unverified",
-            "email": clean_email,
-            "message": "Please verify your email before logging in."
-        }
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email before logging in."
+        )
 
     # Find membership and org
     mem = db.query(Membership).filter(Membership.email.ilike(clean_email)).first()
@@ -1019,6 +1056,7 @@ def self_serve_login(
         "status": "authenticated",
         "auth_type": "email_password",
         "access_token": access_token,
+        "accessToken": access_token,
         "token_type": "bearer",
         "expires_in": settings.access_token_expire_minutes * 60 if not payload.remember_me else 30 * 86400,
         "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None,
@@ -1038,49 +1076,48 @@ def get_auth_config() -> Dict[str, Any]:
     }
 
 
+@router.get("/v1/auth/google", summary="Get Google OAuth 2.0 Consent URL")
+@router.get("/api/v1/auth/google", summary="Get Google OAuth 2.0 Consent URL (Alias)")
+def google_auth_url(response: Response, redirect_uri: Optional[str] = None) -> Dict[str, Any]:
+    """Step 1: Frontend calls this to get Google consent URL and sets CSRF cookie."""
+    state = secrets.token_urlsafe(24)
+    url = get_google_auth_url(state=state, redirect_uri=redirect_uri)
+    response.set_cookie(
+        "wf_google_state",
+        state,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=600,
+    )
+    return {"url": url, "state": state}
+
+
 @router.post("/v1/auth/google", summary="Google OAuth 2.0 Social Login")
 @router.post("/api/v1/auth/google", summary="Google OAuth 2.0 Social Login (Alias)")
 def google_auth(
     payload: GoogleAuthRequest,
     response: Response,
     request: Request,
+    wf_google_state: Optional[str] = Cookie(default=None),
     db: Session = Depends(get_db_session)
 ) -> Dict[str, Any]:
+    # CSRF state verification if provided
+    cookie_state = wf_google_state or request.cookies.get("wf_google_state")
+    if cookie_state and payload.state and payload.state != cookie_state:
+        raise HTTPException(status_code=400, detail="OAuth state mismatch")
+
     email = None
     name = payload.name
     picture = payload.picture
 
     # 1. OAuth 2.0 Authorization Code Exchange (Frontend redirect flow)
     if payload.code:
-        token_url = "https://oauth2.googleapis.com/token"
-        redirect_uri = payload.redirect_uri or settings.google_redirect_uri
-        if redirect_uri and not redirect_uri.startswith("http"):
-            redirect_uri = f"{settings.app_base_url.rstrip('/')}/{redirect_uri.lstrip('/')}"
-        token_payload = {
-            "code": payload.code.strip(),
-            "client_id": settings.google_client_id,
-            "client_secret": settings.google_client_secret,
-            "redirect_uri": redirect_uri,
-            "grant_type": "authorization_code"
-        }
         try:
-            with httpx.Client(timeout=10.0) as client:
-                res = client.post(token_url, data=token_payload)
-                if res.status_code == 200:
-                    token_data = res.json()
-                    access_token_google = token_data.get("access_token")
-                    if access_token_google:
-                        userinfo_res = client.get(
-                            "https://www.googleapis.com/oauth2/v3/userinfo",
-                            headers={"Authorization": f"Bearer {access_token_google}"}
-                        )
-                        if userinfo_res.status_code == 200:
-                            profile = userinfo_res.json()
-                            email = profile.get("email")
-                            name = profile.get("name") or name
-                            picture = profile.get("picture") or picture
-                else:
-                    logger.warning(f"Google OAuth token exchange returned {res.status_code}: {res.text}")
+            profile = exchange_google_code(code=payload.code, redirect_uri=payload.redirect_uri)
+            email = profile.get("email")
+            name = profile.get("name") or name
+            picture = profile.get("picture") or picture
         except Exception as exc:
             logger.warning(f"Google OAuth exchange error: {exc}")
 
@@ -1398,7 +1435,7 @@ def get_current_user(
     request: Request,
     db: Session = Depends(get_db_session)
 ) -> Dict[str, Any]:
-    # Try Authorization header first
+    # 1. Try Authorization header first (JWT)
     auth_header = request.headers.get("authorization", "")
     if auth_header.startswith("Bearer "):
         token = auth_header[7:]
@@ -1419,6 +1456,31 @@ def get_current_user(
                     },
                     "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None
                 }
+
+    # 2. Try X-API-Key or Bearer API key
+    api_key_str = request.headers.get("x-api-key", "")
+    if not api_key_str and auth_header.startswith("mb_"):
+        api_key_str = auth_header
+    if api_key_str:
+        api_key = APIKeyService.verify_api_key(db, api_key_str)
+        if api_key:
+            mem = db.query(Membership).filter(Membership.org_id == api_key.org_id).first()
+            user = db.query(UserAccount).filter(UserAccount.email == mem.email).first() if mem else None
+            org = db.query(Organization).filter(Organization.id == api_key.org_id).first()
+            user_name = user.name if user else (mem.name if mem else "Developer")
+            user_email = user.email if user else (mem.email if mem else "")
+            return {
+                "authenticated": True,
+                "user": {
+                    "id": user.id if user else "usr_dev",
+                    "email": user_email,
+                    "name": user_name,
+                    "role": api_key.role,
+                    "email_verified": user.is_verified if user else True,
+                    "last_login_at": user.last_login_at.isoformat() if (user and user.last_login_at) else None
+                },
+                "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None
+            }
 
     raise HTTPException(status_code=401, detail="Not authenticated. Please log in.")
 

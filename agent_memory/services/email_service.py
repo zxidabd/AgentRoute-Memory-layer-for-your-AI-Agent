@@ -55,6 +55,9 @@ class EmailService:
     @classmethod
     def _dispatch_email(cls, to_email: str, subject: str, html_body: str) -> bool:
         """Attempts Resend REST API dispatch first; falls back to SMTP if configured."""
+        if settings.environment in ("testing", "test"):
+            return True
+
         api_key = settings.resend_api_key.strip() if settings.resend_api_key else ""
         from_header = cls._get_from_header()
 

@@ -87,12 +87,10 @@ def test_login_security_gates():
         res = client.post("/v1/auth/login", json={"email": verified_email, "password": "WrongPassword!"})
         assert res.status_code == 401, f"Expected 401 on wrong password, got {res.status_code}"
 
-        # 5. Unverified email with correct password must return status="unverified"
+        # 5. Unverified email with correct password must be rejected (403)
         res = client.post("/v1/auth/login", json={"email": unverified_email, "password": "Secret123!"})
-        assert res.status_code == 200
-        data = res.json()
-        assert data.get("status") == "unverified", f"Expected unverified status, got {data}"
-        assert "api_key" not in data, "Unverified user must not receive an API key"
+        assert res.status_code == 403, f"Expected 403 on unverified email, got {res.status_code}"
+        assert "verify your email" in res.text.lower(), f"Expected verification error message, got {res.text}"
 
         # 6. Verified email with correct password must succeed and return API key
         res = client.post("/v1/auth/login", json={"email": verified_email, "password": "Secret123!"})

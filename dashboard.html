@@ -1855,6 +1855,31 @@ You can ask me to explain how our architecture is configured, query my capabilit
         return;
       }
 
+      // Strict backend auth and verification guard
+      const authHeaders = {};
+      if (accessToken) authHeaders['Authorization'] = 'Bearer ' + accessToken;
+      if (activeKey) authHeaders['X-API-Key'] = activeKey;
+
+      fetch('/v1/auth/me', { headers: authHeaders, credentials: 'include' })
+        .then(r => {
+          if (!r.ok) {
+            localStorage.clear();
+            window.location.href = '/landing';
+            return null;
+          }
+          return r.json();
+        })
+        .then(data => {
+          if (data && data.user) {
+            if (data.user.email_verified === false) {
+              alert('Your email address is unverified. Please check your inbox and verify your email to access the console.');
+              localStorage.clear();
+              window.location.href = '/landing';
+            }
+          }
+        })
+        .catch(() => {});
+
       const userName = localStorage.getItem('mb_user_name') || 'Developer';
       const userEmail = localStorage.getItem('mb_user_email') || 'developer@company.internal';
       const userInitial = userName.trim().charAt(0).toUpperCase() || 'D';
