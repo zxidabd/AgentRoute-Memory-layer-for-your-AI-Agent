@@ -3,397 +3,399 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AgentRoute Memory | Sign In & Sign Up</title>
+  <title>AgentRoute | User Login & Sign Up</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     :root {
-      --bg: #090D16;
-      --bg-card: rgba(15, 23, 42, 0.75);
-      --border: rgba(255, 255, 255, 0.08);
-      --border-focus: #6366F1;
-      --accent: #6366F1;
-      --accent-hover: #4F46E5;
+      --bg-space: #142842;
+      --bg-space-dark: #0D1C2E;
+      --card-bg: rgba(18, 40, 68, 0.88);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --input-bg: #E8EEF5;
+      --input-text: #1E293B;
+      --input-placeholder: #8A99AD;
+      --gold-btn: linear-gradient(180deg, #FFB733 0%, #FFA114 100%);
+      --gold-hover: linear-gradient(180deg, #FFC252 0%, #FF9800 100%);
       --cyan: #38BDF8;
-      --emerald: #10B981;
-      --text-main: #F8FAFC;
-      --text-muted: #94A3B8;
-      --text-dim: #64748B;
-      --danger: #EF4444;
-      --danger-bg: rgba(239, 68, 68, 0.1);
-      --success-bg: rgba(16, 185, 129, 0.1);
+      --text-white: #FFFFFF;
+      --text-muted: #9BB0C7;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: var(--bg);
-      color: var(--text-main);
+      font-family: 'Poppins', 'Inter', -apple-system, sans-serif;
+      background: linear-gradient(145deg, #183354 0%, #0F2238 60%, #091726 100%);
+      color: var(--text-white);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      background-image: 
-        radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
-        radial-gradient(circle at 85% 80%, rgba(56, 189, 248, 0.12) 0%, transparent 40%);
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow-x: hidden;
+      padding: 24px 16px;
     }
 
-    /* Top Nav */
-    .top-bar {
+    /* Ambient Space Elements (Subtle planets & rocket wireframes matching screenshot) */
+    .space-bg {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .space-planet-1 {
+      position: absolute;
+      top: 12%;
+      left: 10%;
+      width: 130px;
+      height: 130px;
+      border: 1px dashed rgba(255, 255, 255, 0.12);
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, rgba(56, 189, 248, 0.15), transparent 70%);
+      box-shadow: inset 0 0 20px rgba(56, 189, 248, 0.1);
+    }
+    .space-planet-1::after {
+      content: '';
+      position: absolute;
+      top: -12px;
+      left: -20px;
+      width: 170px;
+      height: 60px;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 50%;
+      transform: rotate(-25deg);
+    }
+    .space-planet-2 {
+      position: absolute;
+      bottom: 12%;
+      left: 8%;
+      width: 90px;
+      height: 90px;
+      border: 1px dashed rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 40%, rgba(255, 183, 51, 0.12), transparent 70%);
+    }
+    .space-planet-3 {
+      position: absolute;
+      bottom: 14%;
+      right: 12%;
+      width: 110px;
+      height: 110px;
+      border: 1px dashed rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(56, 189, 248, 0.1), transparent 70%);
+    }
+    .space-rocket {
+      position: absolute;
+      top: 10%;
+      right: 14%;
+      opacity: 0.18;
+      transform: rotate(25deg);
+    }
+    .space-stars {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        radial-gradient(1px 1px at 20px 30px, #ffffff, rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 70px 140px, #ffffff, rgba(0,0,0,0)),
+        radial-gradient(1.5px 1.5px at 150px 80px, #ffffff, rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 280px 220px, #38BDF8, rgba(0,0,0,0)),
+        radial-gradient(1.5px 1.5px at 450px 340px, #ffffff, rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 720px 180px, #FFB733, rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 890px 420px, #ffffff, rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 1050px 250px, #38BDF8, rgba(0,0,0,0));
+      background-repeat: repeat;
+      background-size: 600px 600px;
+      opacity: 0.6;
+    }
+
+    /* Top Logo Link */
+    .top-logo {
+      position: absolute;
+      top: 24px;
+      left: 32px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: #FFFFFF;
+      font-weight: 700;
+      font-size: 17px;
+      z-index: 10;
+      letter-spacing: -0.01em;
+    }
+    .top-logo-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--gold-btn);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 800;
+      color: #0F172A;
+    }
+
+    /* Centered Login Card */
+    .login-container {
+      position: relative;
+      z-index: 5;
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+
+    .login-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      border-radius: 32px;
+      padding: 46px 38px 40px 38px;
+      box-shadow: 
+        0 24px 60px rgba(0, 0, 0, 0.45),
+        0 0 50px rgba(24, 52, 85, 0.4);
+      text-align: center;
+    }
+
+    /* Title & Subtitle matching the screenshot */
+    .card-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #FFFFFF;
+      margin-bottom: 6px;
+    }
+    .card-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 30px;
+      font-weight: 400;
+    }
+
+    /* Pill Input Field matching screenshot */
+    .pill-input-box {
+      position: relative;
+      margin-bottom: 16px;
+      width: 100%;
+    }
+    .pill-icon {
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94A3B8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .pill-input {
+      width: 100%;
+      height: 52px;
+      padding: 0 24px 0 54px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: var(--input-bg);
+      color: var(--input-text);
+      font-size: 14px;
+      font-family: inherit;
+      font-weight: 500;
+      outline: none;
+      transition: all 0.2s ease;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+    }
+    .pill-input:focus {
+      background: #FFFFFF;
+      border-color: #FFA114;
+      box-shadow: 0 0 0 3px rgba(255, 161, 20, 0.3);
+    }
+    .pill-input::placeholder {
+      color: var(--input-placeholder);
+      font-weight: 400;
+    }
+
+    /* Remember & Forgot Row matching screenshot */
+    .remember-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 18px 32px;
-      border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(12px);
-      background: rgba(9, 13, 22, 0.6);
-      position: sticky;
-      top: 0;
-      z-index: 40;
-    }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      text-decoration: none;
-      color: var(--text-main);
-      font-weight: 700;
-      font-size: 18px;
-      letter-spacing: -0.02em;
-    }
-    .brand-icon {
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, #6366F1, #38BDF8);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      font-weight: 800;
-      font-size: 16px;
-      box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
-    }
-    .nav-links a {
+      margin: 18px 8px 24px 8px;
+      font-size: 13px;
       color: var(--text-muted);
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 500;
-      transition: color 0.15s;
     }
-    .nav-links a:hover { color: var(--text-main); }
-
-    /* Main Container */
-    .auth-layout {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      max-width: 1200px;
-      margin: 0 auto;
-      width: 100%;
-      padding: 40px 24px;
-      align-items: center;
-      gap: 60px;
-    }
-
-    @media (max-width: 900px) {
-      .auth-layout {
-        grid-template-columns: 1fr;
-        gap: 32px;
-        padding: 24px 16px;
-      }
-      .hero-side { display: none !important; }
-    }
-
-    /* Left Hero / Brand Side */
-    .hero-side {
+    .remember-label {
       display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-    .badge-trial {
-      display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: rgba(99, 102, 241, 0.12);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--cyan);
-      width: fit-content;
-    }
-    .badge-dot {
-      width: 8px;
-      height: 8px;
-      background: var(--cyan);
-      border-radius: 50%;
-      box-shadow: 0 0 8px var(--cyan);
-    }
-    .hero-title {
-      font-size: clamp(32px, 3.5vw, 44px);
-      font-weight: 800;
-      line-height: 1.15;
-      letter-spacing: -0.03em;
-    }
-    .hero-title span {
-      background: linear-gradient(135deg, #A5B4FC, #38BDF8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .hero-desc {
-      font-size: 16px;
-      line-height: 1.6;
-      color: var(--text-muted);
-    }
-    .feature-list {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      margin-top: 12px;
-    }
-    .feature-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-    }
-    .feature-icon {
-      width: 24px;
-      height: 24px;
-      border-radius: 6px;
-      background: rgba(99, 102, 241, 0.15);
-      border: 1px solid rgba(99, 102, 241, 0.25);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--cyan);
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-    .feature-text h4 {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-main);
-    }
-    .feature-text p {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
-
-    /* Right Auth Card */
-    .card-wrapper {
-      position: relative;
-    }
-    .auth-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 36px 32px;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(20px);
-    }
-    .auth-tabs {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 4px;
-      margin-bottom: 24px;
-      gap: 4px;
-    }
-    .tab-btn {
-      padding: 10px;
-      border: none;
-      background: transparent;
-      color: var(--text-muted);
-      font-size: 14px;
-      font-weight: 600;
-      border-radius: 8px;
       cursor: pointer;
-      transition: all 0.2s;
+      user-select: none;
     }
-    .tab-btn.active {
-      background: var(--accent);
-      color: #fff;
-      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+    .remember-label input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      accent-color: #FFA114;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .forgot-btn {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .forgot-btn:hover {
+      color: #FFFFFF;
+      text-decoration: underline;
     }
 
-    /* Google Button */
-    .btn-google {
+    /* Golden Pill Button matching screenshot */
+    .btn-gold {
       width: 100%;
+      height: 52px;
+      border-radius: 999px;
+      background: var(--gold-btn);
+      border: none;
+      color: #FFFFFF;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(255, 161, 20, 0.4);
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .btn-gold:hover:not(:disabled) {
+      background: var(--gold-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(255, 161, 20, 0.55);
+    }
+    .btn-gold:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Google Sign In Pill */
+    .btn-google-pill {
+      width: 100%;
+      height: 48px;
+      border-radius: 999px;
+      background: #FFFFFF;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #0F172A;
+      font-size: 14px;
+      font-weight: 600;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 12px;
-      padding: 12px 16px;
-      border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      background: #FFFFFF;
-      color: #111827;
-      font-size: 14px;
-      font-weight: 600;
       cursor: pointer;
-      transition: all 0.15s ease;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s ease;
+      margin-bottom: 22px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      font-family: inherit;
     }
-    .btn-google:hover {
+    .btn-google-pill:hover {
       background: #F8FAFC;
-      border-color: rgba(255, 255, 255, 0.3);
       transform: translateY(-1px);
     }
-    .divider {
+
+    .divider-pill {
       display: flex;
       align-items: center;
-      margin: 20px 0;
-      color: var(--text-dim);
+      margin: 18px 0;
+      color: var(--text-muted);
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
-    .divider::before, .divider::after {
+    .divider-pill::before, .divider-pill::after {
       content: '';
       flex: 1;
       height: 1px;
-      background: var(--border);
+      background: rgba(255, 255, 255, 0.12);
     }
-    .divider span { padding: 0 12px; }
+    .divider-pill span { padding: 0 12px; }
 
-    /* Form Fields */
-    .form-group {
-      margin-bottom: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .form-group label {
+    /* Switch Tabs at Top or Bottom */
+    .mode-switch-link {
+      margin-top: 24px;
       font-size: 13px;
-      font-weight: 500;
-      color: var(--text-main);
-    }
-    .input-field {
-      width: 100%;
-      padding: 12px 14px;
-      background: rgba(15, 23, 42, 0.8);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text-main);
-      font-size: 14px;
-      transition: all 0.15s;
-    }
-    .input-field:focus {
-      outline: none;
-      border-color: var(--border-focus);
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-    }
-    .input-field::placeholder { color: var(--text-dim); }
-
-    .form-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 13px;
-      margin-bottom: 20px;
-    }
-    .remember-me {
-      display: flex;
-      align-items: center;
-      gap: 8px;
       color: var(--text-muted);
-      cursor: pointer;
     }
-    .remember-me input { accent-color: var(--accent); }
-    .forgot-link {
-      color: var(--cyan);
+    .mode-switch-link a {
+      color: #FFB733;
       text-decoration: none;
-      font-weight: 500;
-    }
-    .forgot-link:hover { text-decoration: underline; }
-
-    .btn-submit {
-      width: 100%;
-      padding: 13px;
-      background: linear-gradient(135deg, #6366F1, #4F46E5);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 8px;
-      color: #fff;
-      font-size: 14px;
       font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+      margin-left: 6px;
     }
-    .btn-submit:hover:not(:disabled) {
-      background: linear-gradient(135deg, #4F46E5, #4338CA);
-      transform: translateY(-1px);
-      box-shadow: 0 6px 18px rgba(99, 102, 241, 0.45);
-    }
-    .btn-submit:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
+    .mode-switch-link a:hover {
+      text-decoration: underline;
     }
 
-    /* Alerts and Feedback */
-    .alert-box {
-      padding: 12px 14px;
-      border-radius: 8px;
-      font-size: 13px;
-      line-height: 1.5;
+    /* Alerts */
+    .alert-pill {
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-size: 12.5px;
       margin-bottom: 18px;
       display: none;
+      text-align: center;
     }
-    .alert-error {
-      background: var(--danger-bg);
-      border: 1px solid rgba(239, 68, 68, 0.3);
+    .alert-err {
+      background: rgba(239, 68, 68, 0.18);
+      border: 1px solid rgba(239, 68, 68, 0.4);
       color: #FCA5A5;
     }
-    .alert-success {
-      background: var(--success-bg);
-      border: 1px solid rgba(16, 185, 129, 0.3);
+    .alert-ok {
+      background: rgba(16, 185, 129, 0.18);
+      border: 1px solid rgba(16, 185, 129, 0.4);
       color: #6EE7B7;
     }
-    .alert-info {
-      background: rgba(56, 189, 248, 0.1);
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      color: #7DD3FC;
-    }
 
-    /* Verification OTP code styling */
-    .otp-input-large {
-      font-family: 'JetBrains Mono', monospace;
+    /* Large OTP Input for Email Verification */
+    .otp-code-pill {
+      width: 100%;
+      height: 60px;
+      border-radius: 999px;
+      background: #0B1728;
+      border: 2px solid #FFB733;
+      color: #FFB733;
+      font-family: 'JetBrains Mono', monospace, Courier;
       font-size: 28px;
+      font-weight: 700;
       letter-spacing: 10px;
       text-align: center;
-      font-weight: 700;
-      color: var(--cyan);
-      background: rgba(11, 15, 23, 0.95);
-      border: 1px solid var(--cyan);
-      border-radius: 8px;
-      padding: 12px;
-      width: 100%;
-      margin: 16px 0;
+      margin: 20px 0;
+      outline: none;
+      box-shadow: 0 0 20px rgba(255, 183, 51, 0.25);
     }
 
-    /* Auto-redirect overlay */
-    #redirect-overlay {
+    /* Auto-Redirect Spinner Overlay */
+    #session-loader {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(9, 13, 22, 0.95);
+      background: rgba(13, 28, 46, 0.95);
       z-index: 100;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 16px;
     }
-    .spinner {
-      width: 44px;
-      height: 44px;
-      border: 3px solid rgba(99, 102, 241, 0.2);
-      border-top-color: var(--cyan);
+    .orbit-spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(255, 183, 51, 0.2);
+      border-top-color: #FFA114;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -402,290 +404,267 @@
 </head>
 <body>
 
-  <!-- Instant Session Auto-Redirect Overlay -->
-  <div id="redirect-overlay">
-    <div class="spinner"></div>
-    <div style="font-size: 16px; font-weight: 600; color: #F8FAFC;" id="redirect-msg">Welcome back! Loading your workspace...</div>
-    <div style="font-size: 13px; color: #94A3B8;">Redirecting directly to dashboard...</div>
+  <!-- Ambient Space Doodle Wireframes -->
+  <div class="space-bg">
+    <div class="space-stars"></div>
+    <div class="space-planet-1"></div>
+    <div class="space-planet-2"></div>
+    <div class="space-planet-3"></div>
+    <svg class="space-rocket" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+      <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+      <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+      <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+    </svg>
   </div>
 
-  <!-- Header -->
-  <header class="top-bar">
-    <a href="/landing" class="brand">
-      <div class="brand-icon">AR</div>
-      <span>AgentRoute</span>
-    </a>
-    <div class="nav-links">
-      <a href="/landing">← Back to Overview</a>
-    </div>
-  </header>
+  <!-- Top Logo Link -->
+  <a href="/landing" class="top-logo">
+    <div class="top-logo-badge">⚡</div>
+    <span>AgentRoute</span>
+  </a>
 
-  <!-- Auth Layout -->
-  <div class="auth-layout">
-    
-    <!-- Hero / Value Prop Left Side -->
-    <div class="hero-side">
-      <div class="badge-trial">
-        <span class="badge-dot"></span>
-        3-Day Free Trial Included
-      </div>
-      <h1 class="hero-title">
-        The Long-Term Memory Layer for <span>Autonomous AI Agents</span>.
-      </h1>
-      <p class="hero-desc">
-        Store, index, and retrieve user preferences, cross-session facts, and fleet knowledge with sub-25ms hybrid vector recall.
-      </p>
+  <!-- Session Auto-Redirect Loader -->
+  <div id="session-loader">
+    <div class="orbit-spinner"></div>
+    <div style="font-size: 17px; font-weight: 600; color: #FFFFFF;" id="loader-title">Welcome back!</div>
+    <div style="font-size: 13px; color: #9BB0C7;">Opening your dashboard...</div>
+  </div>
 
-      <div class="feature-list">
-        <div class="feature-item">
-          <div class="feature-icon">⚡</div>
-          <div class="feature-text">
-            <h4>Sub-25ms Hybrid Semantic Recall</h4>
-            <p>HNSW pgvector indexing + BM25 keyword matching built for ultra-low latency prompt injection.</p>
-          </div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-icon">🧠</div>
-          <div class="feature-text">
-            <h4>Automatic Fact Extraction & Contradiction Resolution</h4>
-            <p>Background workers extract atomic facts and automatically supersede obsolete knowledge.</p>
-          </div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-icon">🔌</div>
-          <div class="feature-text">
-            <h4>Native MCP Server & SDKs</h4>
-            <p>Plug into Claude Desktop, Cursor, and Python/Node agents with zero configuration.</p>
-          </div>
-        </div>
-      </div>
-    </div>
+  <!-- Center Card Form -->
+  <div class="login-container">
+    <div class="login-card">
 
-    <!-- Right Side: Auth Box -->
-    <div class="card-wrapper">
-      <div class="auth-card">
+      <!-- Header -->
+      <h1 class="card-title" id="page-title">USER LOGIN</h1>
+      <p class="card-subtitle" id="page-subtitle">Welcome to the website</p>
 
-        <!-- Tabs -->
-        <div class="auth-tabs" id="auth-tabs-row">
-          <button type="button" class="tab-btn active" id="tab-signin" onclick="switchAuthMode('signin')">Sign In</button>
-          <button type="button" class="tab-btn" id="tab-signup" onclick="switchAuthMode('signup')">Create Account</button>
-        </div>
+      <!-- Alert -->
+      <div class="alert-pill alert-err" id="box-alert-err"></div>
+      <div class="alert-pill alert-ok" id="box-alert-ok"></div>
 
-        <!-- Global Alert Message -->
-        <div class="alert-box alert-error" id="auth-alert-error"></div>
-        <div class="alert-box alert-success" id="auth-alert-success"></div>
-        <div class="alert-box alert-info" id="auth-alert-info"></div>
+      <!-- Google Sign In Button -->
+      <button type="button" class="btn-google-pill" onclick="handleGoogleSignIn()">
+        <svg width="18" height="18" viewBox="0 0 18 18">
+          <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"/>
+          <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+          <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+          <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+        </svg>
+        <span id="google-btn-text">Continue with Google</span>
+      </button>
 
-        <!-- 1. SIGN IN VIEW -->
-        <div id="view-signin">
-          <button type="button" class="btn-google" onclick="handleGoogleAuthClick('signin')">
-            <svg width="18" height="18" viewBox="0 0 18 18">
-              <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"/>
-              <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
-              <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
-              <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+      <div class="divider-pill"><span>or continue with email</span></div>
+
+      <!-- 1. LOGIN FORM -->
+      <form id="form-login" onsubmit="handleLoginSubmit(event)">
+        <div class="pill-input-box">
+          <span class="pill-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
             </svg>
-            <span>Continue with Google</span>
-          </button>
-
-          <div class="divider"><span>or sign in with email</span></div>
-
-          <form id="form-signin" onsubmit="handleSignInSubmit(event)">
-            <div class="form-group">
-              <label for="signin-email">Work Email</label>
-              <input type="email" id="signin-email" class="input-field" placeholder="alex@company.com" required autocomplete="email">
-            </div>
-            <div class="form-group">
-              <label for="signin-password">Password</label>
-              <input type="password" id="signin-password" class="input-field" placeholder="••••••••••••" required autocomplete="current-password">
-            </div>
-
-            <div class="form-row">
-              <label class="remember-me">
-                <input type="checkbox" id="signin-remember" checked>
-                <span>Remember me</span>
-              </label>
-              <a href="#" class="forgot-link" onclick="switchAuthMode('forgot', event)">Forgot password?</a>
-            </div>
-
-            <button type="submit" class="btn-submit" id="btn-signin-submit">Sign In to Dashboard</button>
-          </form>
+          </span>
+          <input type="email" id="login-username" class="pill-input" placeholder="Username or Email" required autocomplete="email">
         </div>
 
-        <!-- 2. SIGN UP VIEW -->
-        <div id="view-signup" style="display: none;">
-          <button type="button" class="btn-google" onclick="handleGoogleAuthClick('signup')">
-            <svg width="18" height="18" viewBox="0 0 18 18">
-              <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"/>
-              <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
-              <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
-              <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+        <div class="pill-input-box">
+          <span class="pill-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
             </svg>
-            <span>Sign up with Google</span>
-          </button>
-
-          <div class="divider"><span>or register with email</span></div>
-
-          <form id="form-signup" onsubmit="handleSignUpSubmit(event)">
-            <div class="form-group">
-              <label for="signup-name">Full Name</label>
-              <input type="text" id="signup-name" class="input-field" placeholder="Alex Rivera" required autocomplete="name">
-            </div>
-            <div class="form-group">
-              <label for="signup-email">Work Email</label>
-              <input type="email" id="signup-email" class="input-field" placeholder="alex@company.com" required autocomplete="email">
-            </div>
-            <div class="form-group">
-              <label for="signup-password">Password (minimum 8 characters)</label>
-              <input type="password" id="signup-password" class="input-field" placeholder="••••••••••••" minlength="8" required autocomplete="new-password">
-            </div>
-
-            <button type="submit" class="btn-submit" id="btn-signup-submit">Start 3-Day Free Trial</button>
-            <div style="font-size: 12px; color: var(--text-dim); text-align: center; margin-top: 12px;">
-              No credit card required. Free workspace provisioned instantly.
-            </div>
-          </form>
+          </span>
+          <input type="password" id="login-password" class="pill-input" placeholder="Password" required autocomplete="current-password">
         </div>
 
-        <!-- 3. EMAIL VERIFICATION OTP VIEW -->
-        <div id="view-verify" style="display: none;">
-          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Check Your Inbox</h3>
-          <p style="font-size: 14px; color: var(--text-muted); line-height: 1.5;">
-            We sent a verification link & 6-digit confirmation code to:
-            <strong id="verify-target-email" style="color: var(--cyan); display: block; margin-top: 4px;"></strong>
-          </p>
-
-          <form onsubmit="handleVerifySubmit(event)">
-            <input type="text" id="verify-otp-code" class="otp-input-large" placeholder="123456" maxlength="6" pattern="[0-9]{6}" required autocomplete="one-time-code">
-            <button type="submit" class="btn-submit" id="btn-verify-submit">Verify & Enter Dashboard</button>
-          </form>
-
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: 13px;">
-            <a href="#" class="forgot-link" onclick="handleResendCodeClick(event)" id="btn-resend-code">Resend code</a>
-            <a href="#" style="color: var(--text-dim); text-decoration: none;" onclick="switchAuthMode('signin', event)">Back to Sign In</a>
-          </div>
+        <div class="remember-row">
+          <label class="remember-label">
+            <input type="checkbox" id="login-remember" checked>
+            <span>Remember</span>
+          </label>
+          <a href="#" class="forgot-btn" onclick="setViewMode('forgot', event)">Forgot Password ?</a>
         </div>
 
-        <!-- 4. FORGOT PASSWORD VIEW -->
-        <div id="view-forgot" style="display: none;">
-          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Reset Password</h3>
-          <p style="font-size: 14px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
-            Enter your email and we'll send you instructions to reset your account password.
-          </p>
+        <button type="submit" class="btn-gold" id="btn-login-text">LOGIN</button>
 
-          <form onsubmit="handleForgotSubmit(event)">
-            <div class="form-group">
-              <label for="forgot-email">Account Email</label>
-              <input type="email" id="forgot-email" class="input-field" placeholder="alex@company.com" required>
-            </div>
-            <button type="submit" class="btn-submit" id="btn-forgot-submit">Send Reset Link</button>
-          </form>
+        <div class="mode-switch-link">
+          Don't have an account? <a href="#" onclick="setViewMode('signup', event)">Sign Up</a>
+        </div>
+      </form>
 
-          <div style="margin-top: 16px; text-align: center;">
-            <a href="#" class="forgot-link" style="font-size: 13px;" onclick="switchAuthMode('signin', event)">← Back to Sign In</a>
-          </div>
+      <!-- 2. SIGN UP FORM -->
+      <form id="form-signup" style="display: none;" onsubmit="handleSignUpSubmit(event)">
+        <div class="pill-input-box">
+          <span class="pill-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </span>
+          <input type="text" id="signup-fullname" class="pill-input" placeholder="Full Name" required autocomplete="name">
         </div>
 
-        <!-- 5. ENTER NEW PASSWORD VIEW -->
-        <div id="view-reset" style="display: none;">
-          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Set New Password</h3>
-          <form onsubmit="handleResetSubmit(event)">
-            <input type="hidden" id="reset-token-val">
-            <div class="form-group">
-              <label for="reset-new-password">New Password</label>
-              <input type="password" id="reset-new-password" class="input-field" placeholder="••••••••••••" minlength="8" required>
-            </div>
-            <button type="submit" class="btn-submit" id="btn-reset-submit">Update Password & Sign In</button>
-          </form>
+        <div class="pill-input-box">
+          <span class="pill-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+          </span>
+          <input type="email" id="signup-email" class="pill-input" placeholder="Work Email" required autocomplete="email">
         </div>
 
-      </div>
+        <div class="pill-input-box">
+          <span class="pill-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </span>
+          <input type="password" id="signup-password" class="pill-input" placeholder="Create Password (8+ chars)" minlength="8" required autocomplete="new-password">
+        </div>
+
+        <div style="font-size: 12px; color: var(--text-muted); margin: 12px 0 20px 0;">
+          🎉 Includes instant <strong>3-Day Free Trial</strong> on all features.
+        </div>
+
+        <button type="submit" class="btn-gold" id="btn-signup-text">SIGN UP</button>
+
+        <div class="mode-switch-link">
+          Already have an account? <a href="#" onclick="setViewMode('login', event)">Login</a>
+        </div>
+      </form>
+
+      <!-- 3. EMAIL VERIFICATION OTP FORM -->
+      <form id="form-verify" style="display: none;" onsubmit="handleVerifySubmit(event)">
+        <p style="font-size: 13.5px; color: var(--text-muted); line-height: 1.5; margin-bottom: 8px;">
+          Enter the 6-digit confirmation code dispatched to:
+          <strong id="verify-email-display" style="color: #FFB733; display: block; margin-top: 4px;"></strong>
+        </p>
+
+        <input type="text" id="verify-code-input" class="otp-code-pill" placeholder="••••••" maxlength="6" pattern="[0-9]{6}" required autocomplete="one-time-code">
+
+        <button type="submit" class="btn-gold" id="btn-verify-text">VERIFY CODE</button>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 18px; font-size: 13px;">
+          <a href="#" style="color: #FFB733; text-decoration: none;" onclick="handleResendCode(event)" id="btn-resend">Resend code</a>
+          <a href="#" style="color: var(--text-muted); text-decoration: none;" onclick="setViewMode('login', event)">Back to Login</a>
+        </div>
+      </form>
+
+      <!-- 4. FORGOT PASSWORD FORM -->
+      <form id="form-forgot" style="display: none;" onsubmit="handleForgotSubmit(event)">
+        <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 18px;">
+          Enter your registered email address to receive password reset instructions.
+        </p>
+
+        <div class="pill-input-box">
+          <span class="pill-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+          </span>
+          <input type="email" id="forgot-email-input" class="pill-input" placeholder="Your Account Email" required>
+        </div>
+
+        <button type="submit" class="btn-gold" id="btn-forgot-text">SEND LINK</button>
+
+        <div class="mode-switch-link">
+          Remember your password? <a href="#" onclick="setViewMode('login', event)">Back to Login</a>
+        </div>
+      </form>
+
     </div>
-
   </div>
 
   <script>
-    let activeEmail = '';
-    let authConfig = { google_client_id: '' };
+    let currentEmail = '';
+    let publicConfig = { google_client_id: '' };
 
-    function showAlert(type, message) {
-      document.getElementById('auth-alert-error').style.display = 'none';
-      document.getElementById('auth-alert-success').style.display = 'none';
-      document.getElementById('auth-alert-info').style.display = 'none';
+    function displayAlert(type, message) {
+      const errBox = document.getElementById('box-alert-err');
+      const okBox = document.getElementById('box-alert-ok');
+      errBox.style.display = 'none';
+      okBox.style.display = 'none';
       if (!message) return;
 
-      const el = document.getElementById(`auth-alert-${type}`);
-      if (el) {
-        el.innerText = message;
-        el.style.display = 'block';
+      if (type === 'err') {
+        errBox.innerText = message;
+        errBox.style.display = 'block';
+      } else {
+        okBox.innerText = message;
+        okBox.style.display = 'block';
       }
     }
 
-    function switchAuthMode(mode, e) {
+    function setViewMode(mode, e) {
       if (e) e.preventDefault();
-      showAlert('error', '');
-      showAlert('success', '');
+      displayAlert('err', '');
+      displayAlert('ok', '');
 
-      const tabsRow = document.getElementById('auth-tabs-row');
-      const tabSignIn = document.getElementById('tab-signin');
-      const tabSignUp = document.getElementById('tab-signup');
+      const title = document.getElementById('page-title');
+      const subtitle = document.getElementById('page-subtitle');
+      const formLogin = document.getElementById('form-login');
+      const formSignup = document.getElementById('form-signup');
+      const formVerify = document.getElementById('form-verify');
+      const formForgot = document.getElementById('form-forgot');
 
-      const views = ['signin', 'signup', 'verify', 'forgot', 'reset'];
-      views.forEach(v => {
-        const el = document.getElementById(`view-${v}`);
-        if (el) el.style.display = 'none';
-      });
+      formLogin.style.display = 'none';
+      formSignup.style.display = 'none';
+      formVerify.style.display = 'none';
+      formForgot.style.display = 'none';
 
-      if (mode === 'signin') {
-        tabsRow.style.display = 'grid';
-        tabSignIn.classList.add('active');
-        tabSignUp.classList.remove('active');
-        document.getElementById('view-signin').style.display = 'block';
-      } else if (mode === 'signup') {
-        tabsRow.style.display = 'grid';
-        tabSignUp.classList.add('active');
-        tabSignIn.classList.remove('active');
-        document.getElementById('view-signup').style.display = 'block';
+      if (mode === 'login' || mode === 'signin') {
+        title.innerText = 'USER LOGIN';
+        subtitle.innerText = 'Welcome to the website';
+        formLogin.style.display = 'block';
+      } else if (mode === 'signup' || mode === 'register') {
+        title.innerText = 'USER SIGN UP';
+        subtitle.innerText = 'Create your developer account';
+        formSignup.style.display = 'block';
       } else if (mode === 'verify') {
-        tabsRow.style.display = 'none';
-        document.getElementById('view-verify').style.display = 'block';
-        document.getElementById('verify-target-email').innerText = activeEmail || 'your email';
-        document.getElementById('verify-otp-code').focus();
+        title.innerText = 'CONFIRM CODE';
+        subtitle.innerText = 'Enter your 6-digit confirmation code';
+        formVerify.style.display = 'block';
+        document.getElementById('verify-email-display').innerText = currentEmail || 'your email';
+        document.getElementById('verify-code-input').focus();
       } else if (mode === 'forgot') {
-        tabsRow.style.display = 'none';
-        document.getElementById('view-forgot').style.display = 'block';
-      } else if (mode === 'reset') {
-        tabsRow.style.display = 'none';
-        document.getElementById('view-reset').style.display = 'block';
+        title.innerText = 'RESET PASSWORD';
+        subtitle.innerText = 'We will email you a reset link';
+        formForgot.style.display = 'block';
       }
     }
 
-    // ── REMEMBRANCE: AUTO-LOGIN CHECK ON LOAD ──────────────────────
+    // ── REMEMBRANCE: DIRECT AUTO-LOGIN IF ALREADY SIGNED IN ─────────────
     async function checkExistingSession() {
       const urlParams = new URLSearchParams(window.location.search);
-      // If user deliberately logged out or is resetting password, do not auto-redirect
-      if (urlParams.get('logout') === '1' || urlParams.get('token') || urlParams.get('reset_token') || urlParams.get('code')) {
+      if (urlParams.get('logout') === '1' || urlParams.get('logged_out') === '1') {
+        localStorage.clear();
+        return;
+      }
+      if (urlParams.get('token') || urlParams.get('reset_token') || urlParams.get('code')) {
         return;
       }
 
       const activeKey = localStorage.getItem('mb_api_key');
       const accessToken = localStorage.getItem('mb_access_token');
 
-      // Check server session with credentials (handles active JWT or refresh token cookie)
       const headers = {};
       if (accessToken) headers['Authorization'] = 'Bearer ' + accessToken;
       if (activeKey) headers['X-API-Key'] = activeKey;
 
       try {
-        const res = await fetch('/v1/auth/me', { headers, credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
+        const resp = await fetch('/v1/auth/me', { headers, credentials: 'include' });
+        if (resp.ok) {
+          const data = await resp.json();
           if (data && data.authenticated && data.user) {
-            // Already signed in! Remember user & redirect directly to dashboard
-            const overlay = document.getElementById('redirect-overlay');
-            const msg = document.getElementById('redirect-msg');
-            if (msg) msg.innerText = `Welcome back, ${data.user.name || 'Developer'}!`;
-            if (overlay) overlay.style.display = 'flex';
+            // Already signed in! Show loader and redirect directly to dashboard
+            const loader = document.getElementById('session-loader');
+            const title = document.getElementById('loader-title');
+            if (title) title.innerText = `Welcome back, ${data.user.name || 'Developer'}!`;
+            if (loader) loader.style.display = 'flex';
 
             if (data.access_token) localStorage.setItem('mb_access_token', data.access_token);
             if (data.user.name) localStorage.setItem('mb_user_name', data.user.name);
@@ -694,34 +673,31 @@
 
             setTimeout(() => {
               window.location.href = '/dashboard';
-            }, 400);
-            return;
-          }
-        }
-      } catch (err) {
-        // Network or not authenticated - stay on auth page
-      }
-    }
-
-    // ── PUBLIC AUTH CONFIG (Google Client ID) ────────────────────────
-    async function initAuthConfig() {
-      try {
-        const res = await fetch('/v1/auth/config');
-        if (res.ok) {
-          authConfig = await res.json();
-          if (authConfig.google_client_id && window.google && google.accounts && google.accounts.id) {
-            google.accounts.id.initialize({
-              client_id: authConfig.google_client_id,
-              callback: handleGoogleCredentialResponse
-            });
+            }, 350);
           }
         }
       } catch (e) {
-        console.warn('Config fetch notice:', e);
+        // Not authenticated
       }
     }
 
-    async function handleGoogleCredentialResponse(response) {
+    // ── GOOGLE AUTH ─────────────────────────────────────────────────────
+    async function initGoogleAuth() {
+      try {
+        const res = await fetch('/v1/auth/config');
+        if (res.ok) {
+          publicConfig = await res.json();
+          if (publicConfig.google_client_id && window.google && google.accounts && google.accounts.id) {
+            google.accounts.id.initialize({
+              client_id: publicConfig.google_client_id,
+              callback: handleGoogleCredential
+            });
+          }
+        }
+      } catch (e) {}
+    }
+
+    async function handleGoogleCredential(response) {
       try {
         const resp = await fetch('/v1/auth/google', {
           method: 'POST',
@@ -731,17 +707,17 @@
         });
         const data = await resp.json();
         if (resp.ok && (data.access_token || data.api_key)) {
-          persistSession(data);
+          saveSession(data);
           window.location.href = '/dashboard';
         } else {
-          showAlert('error', 'Google authentication failed: ' + (data.detail || 'Unknown error'));
+          displayAlert('err', data.detail || 'Google sign-in failed.');
         }
       } catch (err) {
-        showAlert('error', 'Google sign-in error: ' + err.message);
+        displayAlert('err', 'Google sign-in error: ' + err.message);
       }
     }
 
-    async function handleGoogleAuthClick(intent) {
+    async function handleGoogleSignIn() {
       try {
         const redirectUri = window.location.origin + '/landing';
         const res = await fetch(`/v1/auth/google?redirect_uri=${encodeURIComponent(redirectUri)}`, {
@@ -754,14 +730,12 @@
             return;
           }
         }
-      } catch (e) {
-        console.warn('Backend OAuth generation error:', e);
-      }
+      } catch (e) {}
 
-      if (authConfig.google_client_id) {
+      if (publicConfig.google_client_id) {
         const redirectUri = window.location.origin + '/landing';
         const oauthUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
-          client_id: authConfig.google_client_id,
+          client_id: publicConfig.google_client_id,
           redirect_uri: redirectUri,
           response_type: 'code',
           scope: 'openid email profile',
@@ -772,10 +746,10 @@
         return;
       }
 
-      showAlert('error', 'Google Sign-In is not configured. Please use email and password.');
+      displayAlert('err', 'Google OAuth is not configured. Please use email and password.');
     }
 
-    function persistSession(data) {
+    function saveSession(data) {
       if (data.access_token) localStorage.setItem('mb_access_token', data.access_token);
       if (data.api_key) localStorage.setItem('mb_api_key', data.api_key);
       if (data.org && data.org.id) localStorage.setItem('mb_org_id', data.org.id);
@@ -785,16 +759,16 @@
       }
     }
 
-    // ── SIGN IN SUBMIT ───────────────────────────────────────────────
-    async function handleSignInSubmit(e) {
+    // ── LOGIN SUBMIT ────────────────────────────────────────────────────
+    async function handleLoginSubmit(e) {
       e.preventDefault();
-      showAlert('error', '');
-      const email = document.getElementById('signin-email').value.trim();
-      const password = document.getElementById('signin-password').value;
-      const remember = document.getElementById('signin-remember').checked;
-      const btn = document.getElementById('btn-signin-submit');
+      displayAlert('err', '');
+      const email = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+      const remember = document.getElementById('login-remember').checked;
+      const btn = document.getElementById('btn-login-text');
 
-      btn.innerText = 'Signing In...';
+      btn.innerText = 'LOGGING IN...';
       btn.disabled = true;
 
       try {
@@ -807,38 +781,38 @@
         const data = await res.json();
         if (res.ok) {
           if (data.status === 'unverified') {
-            activeEmail = email;
-            switchAuthMode('verify');
-            showAlert('info', 'Please enter your 6-digit confirmation code to activate your account.');
+            currentEmail = email;
+            setViewMode('verify');
+            displayAlert('ok', 'Please enter your 6-digit confirmation code.');
             return;
           }
-          persistSession(data);
+          saveSession(data);
           window.location.href = '/dashboard';
         } else if (res.status === 403 && data.detail && data.detail.toLowerCase().includes('verify')) {
-          activeEmail = email;
-          switchAuthMode('verify');
-          showAlert('info', data.detail);
+          currentEmail = email;
+          setViewMode('verify');
+          displayAlert('err', data.detail);
         } else {
-          showAlert('error', data.detail || 'Incorrect email or password.');
+          displayAlert('err', data.detail || 'Incorrect email or password.');
         }
       } catch (err) {
-        showAlert('error', 'Sign in failed: ' + err.message);
+        displayAlert('err', 'Login error: ' + err.message);
       } finally {
-        btn.innerText = 'Sign In to Dashboard';
+        btn.innerText = 'LOGIN';
         btn.disabled = false;
       }
     }
 
-    // ── SIGN UP SUBMIT ───────────────────────────────────────────────
+    // ── SIGN UP SUBMIT ──────────────────────────────────────────────────
     async function handleSignUpSubmit(e) {
       e.preventDefault();
-      showAlert('error', '');
-      const name = document.getElementById('signup-name').value.trim();
+      displayAlert('err', '');
+      const name = document.getElementById('signup-fullname').value.trim();
       const email = document.getElementById('signup-email').value.trim();
       const password = document.getElementById('signup-password').value;
-      const btn = document.getElementById('btn-signup-submit');
+      const btn = document.getElementById('btn-signup-text');
 
-      btn.innerText = 'Provisioning Workspace...';
+      btn.innerText = 'CREATING...';
       btn.disabled = true;
 
       try {
@@ -850,28 +824,28 @@
         });
         const data = await res.json();
         if (res.ok || res.status === 201) {
-          activeEmail = email;
-          switchAuthMode('verify');
-          showAlert('success', data.message || 'Verification email dispatched. Enter your 6-digit code below.');
+          currentEmail = email;
+          setViewMode('verify');
+          displayAlert('ok', data.message || 'Confirmation code dispatched to your inbox.');
         } else {
-          showAlert('error', data.detail || 'Registration failed. Please try again.');
+          displayAlert('err', data.detail || 'Registration failed.');
         }
       } catch (err) {
-        showAlert('error', 'Registration error: ' + err.message);
+        displayAlert('err', 'Registration error: ' + err.message);
       } finally {
-        btn.innerText = 'Start 3-Day Free Trial';
+        btn.innerText = 'SIGN UP';
         btn.disabled = false;
       }
     }
 
-    // ── VERIFY OTP CODE SUBMIT ───────────────────────────────────────
+    // ── VERIFY CODE SUBMIT ──────────────────────────────────────────────
     async function handleVerifySubmit(e) {
       e.preventDefault();
-      showAlert('error', '');
-      const code = document.getElementById('verify-otp-code').value.trim();
-      const btn = document.getElementById('btn-verify-submit');
+      displayAlert('err', '');
+      const code = document.getElementById('verify-code-input').value.trim();
+      const btn = document.getElementById('btn-verify-text');
 
-      btn.innerText = 'Activating Free Trial...';
+      btn.innerText = 'VERIFYING...';
       btn.disabled = true;
 
       try {
@@ -879,61 +853,61 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ email: activeEmail, code: code })
+          body: JSON.stringify({ email: currentEmail, code: code })
         });
         const data = await res.json();
         if (res.ok && data.status === 'verified') {
-          persistSession(data);
-          showAlert('success', 'Email verified successfully! Redirecting...');
+          saveSession(data);
+          displayAlert('ok', 'Email verified! Entering dashboard...');
           setTimeout(() => {
             window.location.href = '/dashboard';
-          }, 500);
+          }, 400);
         } else {
-          showAlert('error', data.detail || 'Invalid or expired confirmation code.');
+          displayAlert('err', data.detail || 'Invalid or expired code.');
         }
       } catch (err) {
-        showAlert('error', 'Verification error: ' + err.message);
+        displayAlert('err', 'Verification error: ' + err.message);
       } finally {
-        btn.innerText = 'Verify & Enter Dashboard';
+        btn.innerText = 'VERIFY CODE';
         btn.disabled = false;
       }
     }
 
-    // ── RESEND CODE ──────────────────────────────────────────────────
-    async function handleResendCodeClick(e) {
+    // ── RESEND CODE ─────────────────────────────────────────────────────
+    async function handleResendCode(e) {
       e.preventDefault();
-      if (!activeEmail) {
-        showAlert('error', 'No email address specified.');
+      if (!currentEmail) {
+        displayAlert('err', 'No email address specified.');
         return;
       }
-      const btn = document.getElementById('btn-resend-code');
+      const btn = document.getElementById('btn-resend');
       btn.innerText = 'Sending...';
 
       try {
         const res = await fetch('/v1/auth/resend-code', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: activeEmail })
+          body: JSON.stringify({ email: currentEmail })
         });
         const data = await res.json();
         if (res.ok) {
-          showAlert('success', data.message || 'Fresh verification code dispatched to your inbox.');
+          displayAlert('ok', data.message || 'Fresh code dispatched to your inbox.');
         } else {
-          showAlert('error', data.detail || 'Could not send verification code.');
+          displayAlert('err', data.detail || 'Could not send verification code.');
         }
       } catch (err) {
-        showAlert('error', 'Resend error: ' + err.message);
+        displayAlert('err', 'Resend error: ' + err.message);
       } finally {
         btn.innerText = 'Resend code';
       }
     }
 
-    // ── FORGOT PASSWORD SUBMIT ───────────────────────────────────────
+    // ── FORGOT PASSWORD ─────────────────────────────────────────────────
     async function handleForgotSubmit(e) {
       e.preventDefault();
-      const email = document.getElementById('forgot-email').value.trim();
-      const btn = document.getElementById('btn-forgot-submit');
-      btn.innerText = 'Sending...';
+      const email = document.getElementById('forgot-email-input').value.trim();
+      const btn = document.getElementById('btn-forgot-text');
+      btn.innerText = 'SENDING...';
       btn.disabled = true;
 
       try {
@@ -943,73 +917,35 @@
           body: JSON.stringify({ email })
         });
         const data = await res.json();
-        showAlert('success', data.message || 'Password reset link dispatched.');
-        setTimeout(() => switchAuthMode('signin'), 2000);
+        displayAlert('ok', data.message || 'Reset link sent if account exists.');
+        setTimeout(() => setViewMode('login'), 2500);
       } catch (err) {
-        showAlert('error', err.message);
+        displayAlert('err', err.message);
       } finally {
-        btn.innerText = 'Send Reset Link';
+        btn.innerText = 'SEND LINK';
         btn.disabled = false;
       }
     }
 
-    // ── RESET PASSWORD SUBMIT ────────────────────────────────────────
-    async function handleResetSubmit(e) {
-      e.preventDefault();
-      const token = document.getElementById('reset-token-val').value;
-      const newPassword = document.getElementById('reset-new-password').value;
-      const btn = document.getElementById('btn-reset-submit');
-      btn.innerText = 'Updating...';
-      btn.disabled = true;
-
-      try {
-        const res = await fetch('/v1/auth/reset-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, new_password: newPassword })
-        });
-        const data = await res.json();
-        if (res.ok) {
-          showAlert('success', 'Password updated successfully! Please sign in.');
-          setTimeout(() => switchAuthMode('signin'), 1500);
-        } else {
-          showAlert('error', data.detail || 'Token expired or invalid.');
-        }
-      } catch (err) {
-        showAlert('error', err.message);
-      } finally {
-        btn.innerText = 'Update Password & Sign In';
-        btn.disabled = false;
-      }
-    }
-
-    // ── URL PARAMETERS ON LOAD ───────────────────────────────────────
+    // ── INITIALIZE ON LOAD ──────────────────────────────────────────────
     window.addEventListener('load', () => {
       checkExistingSession();
-      initAuthConfig();
+      initGoogleAuth();
 
       const urlParams = new URLSearchParams(window.location.search);
-      const tab = urlParams.get('tab');
-      if (tab === 'signup' || window.location.pathname.includes('signup') || window.location.pathname.includes('register')) {
-        switchAuthMode('signup');
+      const path = window.location.pathname.toLowerCase();
+      if (urlParams.get('tab') === 'signup' || path.includes('signup') || path.includes('register')) {
+        setViewMode('signup');
       } else {
-        switchAuthMode('signin');
+        setViewMode('login');
       }
 
-      // Password reset token in URL
-      const resetToken = urlParams.get('reset_token');
-      if (resetToken) {
-        switchAuthMode('reset');
-        document.getElementById('reset-token-val').value = resetToken;
-      }
-
-      // Email verification token in URL
+      // Single-click email verification token handler
       const token = urlParams.get('token');
       if (token) {
-        switchAuthMode('verify');
-        activeEmail = urlParams.get('email') || '';
-        document.getElementById('verify-target-email').innerText = activeEmail || 'your email';
-        showAlert('info', 'Verifying email confirmation token...');
+        setViewMode('verify');
+        currentEmail = urlParams.get('email') || '';
+        displayAlert('ok', 'Verifying email token...');
 
         fetch('/v1/auth/verify-email', {
           method: 'POST',
@@ -1018,14 +954,14 @@
           body: JSON.stringify({ token: token })
         }).then(r => r.json()).then(data => {
           if (data.status === 'verified') {
-            persistSession(data);
-            showAlert('success', 'Email confirmed! Entering your dashboard...');
-            setTimeout(() => { window.location.href = '/dashboard'; }, 600);
+            saveSession(data);
+            displayAlert('ok', 'Verified! Entering dashboard...');
+            setTimeout(() => { window.location.href = '/dashboard'; }, 500);
           } else {
-            showAlert('error', data.detail || 'Verification link expired or already used.');
+            displayAlert('err', data.detail || 'Token invalid or expired.');
           }
-        }).catch(e => {
-          showAlert('error', 'Token verification error: ' + e.message);
+        }).catch(err => {
+          displayAlert('err', 'Verification error: ' + err.message);
         });
       }
     });
