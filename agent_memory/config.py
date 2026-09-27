@@ -80,6 +80,8 @@ class Settings(BaseSettings):
     smtp_port: int = int(os.getenv("SMTP_PORT", "465"))
     app_base_url: str = os.getenv("APP_BASE_URL", os.getenv("APP_BASE_URI", os.getenv("FRONTEND_URL", "https://agentroute-memory-layer-for-your-ai-agent.onrender.com")))
     support_email: str = os.getenv("SUPPORT_EMAIL", "support@agentroute.co")
+    # Email Verification Control (Set True once custom domain is connected; defaults to False for instant access)
+    require_email_verification: bool = os.getenv("REQUIRE_EMAIL_VERIFICATION", "false").lower() in ("true", "1", "yes")
 
     # Superuser Access Control
     superuser_emails: str = os.getenv("SUPERUSER_EMAILS", "abdullahzaid509@gmail.com")

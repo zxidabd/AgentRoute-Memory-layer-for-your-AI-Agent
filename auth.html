@@ -824,11 +824,19 @@
         });
         const data = await res.json();
         if (res.ok || res.status === 201) {
+          if (data.status === 'authenticated' || data.access_token) {
+            saveSession(data);
+            displayAlert('ok', 'Account created successfully! Entering dashboard...');
+            setTimeout(() => {
+              window.location.href = '/dashboard';
+            }, 350);
+            return;
+          }
           currentEmail = email;
           setViewMode('verify');
           if (data.dev_otp_code) {
             document.getElementById('verify-code-input').value = data.dev_otp_code;
-            displayAlert('ok', `Render cloud firewall blocked SMTP. Auto-filled code: ${data.dev_otp_code} — Click VERIFY CODE!`);
+            displayAlert('ok', `Auto-filled code: ${data.dev_otp_code} — Click VERIFY CODE!`);
           } else {
             displayAlert('ok', data.message || 'Confirmation code dispatched to your inbox.');
           }

@@ -3269,6 +3269,17 @@ hits = mb.assets.recall(
         });
         const data = await resp.json();
         if (resp.ok) {
+          if (data.status === 'authenticated' || data.access_token) {
+            if (data.access_token) localStorage.setItem('mb_access_token', data.access_token);
+            if (data.api_key) localStorage.setItem('mb_api_key', data.api_key);
+            if (data.org) localStorage.setItem('mb_org_id', data.org.id);
+            if (data.user) {
+              localStorage.setItem('mb_user_name', data.user.name || '');
+              localStorage.setItem('mb_user_email', data.user.email || '');
+            }
+            window.location.href = '/dashboard';
+            return;
+          }
           pendingVerifyEmail = email;
           document.getElementById('verify-email-target').innerText = email;
           document.getElementById('auth-signup-view').style.display = 'none';

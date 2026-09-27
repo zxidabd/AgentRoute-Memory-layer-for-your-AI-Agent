@@ -552,6 +552,8 @@ async def clerk_webhook(
 @router.post("/api/v1/auth/signup", summary="Self-Serve Developer Signup (Alias)")
 def self_serve_signup(
     payload: SignupRequest,
+    response: Response,
+    request: Request,
     db: Session = Depends(get_db_session)
 ) -> Dict[str, Any]:
     clean_email = payload.email.strip().lower()
@@ -603,6 +605,110 @@ def self_serve_signup(
         )
         db.add(user)
     db.commit()
+
+    # When require_email_verification is False, bypass OTP and grant immediate dashboard access
+    if not settings.require_email_verification:
+        user.is_verified = True
+        user.last_login_at = now
+        db.commit()
+
+        # Provision Organization, Project, and Membership
+        mem = db.query(Membership).filter(Membership.email.ilike(clean_email)).first()
+        if not mem:
+            org_name = payload.organization_name or (f"{user.name.split()[0]}'s Workspace" if (user.name and user.name.strip()) else "My Workspace")
+            base_slug = org_name.lower().replace(" ", "-").replace(".", "")
+            clean_slug = f"{base_slug}-{secrets.token_hex(3)}"
+            org = Organization(
+                id=f"org_{secrets.token_hex(6)}",
+                name=org_name,
+                slug=clean_slug,
+                tier=payload.tier or user.plan_tier or "free_trial",
+                subscription_status=user.subscription_status or "trialing",
+                created_at=now
+            )
+            db.add(org)
+            db.commit()
+
+            project = Project(
+                id=f"proj_{secrets.token_hex(6)}",
+                org_id=org.id,
+                name="Production Agent",
+                environment="prod",
+                created_at=now
+            )
+            db.add(project)
+
+            mem = Membership(
+                id=f"mem_{secrets.token_hex(6)}",
+                org_id=org.id,
+                clerk_user_id=user.id,
+                email=clean_email,
+                name=user.name,
+                role="owner",
+                created_at=now
+            )
+            db.add(mem)
+            db.commit()
+
+            key_res = APIKeyService.generate_api_key(
+                db=db,
+                org_id=org.id,
+                name="Default Live Key",
+                role="owner",
+                project_id=project.id,
+                environment="prod"
+            )
+            api_key = key_res["api_key"]
+        else:
+            org = db.query(Organization).filter(Organization.id == mem.org_id).first()
+            api_key = None
+
+        access_token = create_access_token(
+            user_id=user.id,
+            org_id=org.id if org else "",
+            role="owner"
+        )
+
+        if response:
+            raw_refresh = generate_refresh_token()
+            refresh_hash = hash_refresh_token(raw_refresh)
+            refresh_record = RefreshToken(
+                id=f"rt_{secrets.token_hex(8)}",
+                user_id=user.id,
+                token_hash=refresh_hash,
+                expires_at=now + timedelta(days=settings.refresh_token_expire_days),
+                created_at=now,
+                user_agent=request.headers.get("user-agent", "")[:512] if request else "",
+                ip_address=request.client.host if (request and request.client) else None
+            )
+            db.add(refresh_record)
+            db.commit()
+
+            response.set_cookie(
+                key="mb_refresh_token",
+                value=raw_refresh,
+                httponly=True,
+                secure=True,
+                samesite="lax",
+                max_age=settings.refresh_token_expire_days * 86400,
+                path="/"
+            )
+
+        return {
+            "status": "authenticated",
+            "access_token": access_token,
+            "api_key": api_key,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.name,
+                "role": "owner",
+                "is_super_user": bool(user.is_super_user),
+                "email_verified": True
+            },
+            "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None,
+            "message": "Account created successfully! Welcome to AgentRoute."
+        }
 
     # 2. Store 24-hour cryptographic token in email_verification_tokens
     raw_token = create_email_verification_token(user.id)
@@ -1008,12 +1114,15 @@ def self_serve_login(
     if not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Incorrect email or password.")
 
-    # Email verification gate
-    if not user.is_verified:
+    # Email verification gate (active only when require_email_verification is enabled)
+    if settings.require_email_verification and not user.is_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Please verify your email before logging in."
         )
+    elif not user.is_verified:
+        user.is_verified = True
+        db.commit()
 
     # Find membership and org (auto-provision if user is verified)
     mem = db.query(Membership).filter(Membership.email.ilike(clean_email)).first()
@@ -1528,7 +1637,7 @@ def get_current_user(
             exp = rt.expires_at if rt.expires_at.tzinfo else rt.expires_at.replace(tzinfo=timezone.utc)
             if now <= exp:
                 user = db.query(UserAccount).filter(UserAccount.id == rt.user_id).first()
-                if user and user.is_verified:
+                if user and (user.is_verified or not settings.require_email_verification):
                     mem = db.query(Membership).filter(Membership.email.ilike(user.email)).first()
                     org = db.query(Organization).filter(Organization.id == mem.org_id).first() if mem else None
                     fresh_token = create_access_token(
