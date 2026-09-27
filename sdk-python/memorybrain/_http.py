@@ -20,7 +20,7 @@ from .exceptions import (
 class HTTPClient:
     """Internal HTTP transport layer for MemoryBrain SDK."""
 
-    DEFAULT_BASE_URL = "https://api.memorybrain.ai"
+    DEFAULT_BASE_URL = os.getenv("MEMORYBRAIN_BASE_URL") or os.getenv("AGENTROUTE_BASE_URL") or "https://agentroute-memory-layer-for-your-ai-agent.onrender.com"
 
     def __init__(
         self,
@@ -31,7 +31,8 @@ class HTTPClient:
         backoff_factor: float = 0.5
     ):
         self.api_key = api_key.strip()
-        self.base_url = (base_url or self.DEFAULT_BASE_URL).rstrip("/")
+        resolved_url = base_url or os.getenv("MEMORYBRAIN_BASE_URL") or os.getenv("AGENTROUTE_BASE_URL") or self.DEFAULT_BASE_URL
+        self.base_url = resolved_url.rstrip("/")
         self.timeout = timeout
         self.max_retries = max_retries
         self.backoff_factor = backoff_factor

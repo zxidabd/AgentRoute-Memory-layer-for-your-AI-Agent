@@ -29,7 +29,8 @@ export class HTTPClient {
 
   constructor(config: HTTPClientConfig) {
     this.apiKey = config.apiKey.trim();
-    this.baseUrl = (config.baseUrl || "https://api.memorybrain.ai").replace(/\/$/, "");
+    const defaultUrl = (typeof process !== "undefined" && (process.env?.MEMORYBRAIN_BASE_URL || process.env?.AGENTROUTE_BASE_URL)) || "https://agentroute-memory-layer-for-your-ai-agent.onrender.com";
+    this.baseUrl = (config.baseUrl || defaultUrl).replace(/\/$/, "");
     this.timeout = config.timeout || 10000;
     this.maxRetries = config.maxRetries !== undefined ? config.maxRetries : 3;
     this.backoffFactor = config.backoffFactor || 0.5;
