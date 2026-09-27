@@ -151,7 +151,8 @@ def list_projects(
     context: AuthContext = Depends(require_permission("projects:read")),
     db: Session = Depends(get_db_session)
 ) -> List[Dict[str, Any]]:
-    if context.org_id != org_id and context.role != AppRole.OWNER.value:
+    is_super = getattr(context, "is_super_user", False) or context.auth_type == "master"
+    if context.org_id != org_id and not is_super:
         raise HTTPException(status_code=403, detail="Cannot access projects of another organization.")
 
     projects = db.query(Project).filter(Project.org_id == org_id, Project.is_active == True).all()
@@ -300,7 +301,8 @@ def list_org_keys(
     context: AuthContext = Depends(require_permission("keys:read")),
     db: Session = Depends(get_db_session)
 ) -> List[Dict[str, Any]]:
-    if context.org_id != org_id and context.role != AppRole.OWNER.value:
+    is_super = getattr(context, "is_super_user", False) or context.auth_type == "master"
+    if context.org_id != org_id and not is_super:
         raise HTTPException(status_code=403, detail="Cannot access keys of another organization.")
     return APIKeyService.list_keys_for_org(db, org_id=org_id)
 
@@ -312,7 +314,8 @@ def create_org_key(
     context: AuthContext = Depends(require_permission("keys:manage")),
     db: Session = Depends(get_db_session)
 ) -> Dict[str, Any]:
-    if context.org_id != org_id and context.role != AppRole.OWNER.value:
+    is_super = getattr(context, "is_super_user", False) or context.auth_type == "master"
+    if context.org_id != org_id and not is_super:
         raise HTTPException(status_code=403, detail="Cannot create keys for another organization.")
 
     project = db.query(Project).filter(Project.org_id == org_id).first()
@@ -352,7 +355,8 @@ def list_members(
     context: AuthContext = Depends(require_permission("team:read")),
     db: Session = Depends(get_db_session)
 ) -> List[Dict[str, Any]]:
-    if context.org_id != org_id and context.role != AppRole.OWNER.value:
+    is_super = getattr(context, "is_super_user", False) or context.auth_type == "master"
+    if context.org_id != org_id and not is_super:
         raise HTTPException(status_code=403, detail="Cannot view team members of another organization.")
 
     members = db.query(Membership).filter(Membership.org_id == org_id).all()

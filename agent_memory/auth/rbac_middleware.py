@@ -67,7 +67,8 @@ class AuthContext:
         project_id: Optional[str] = None,
         environment: str = "dev",
         user_id: Optional[str] = None,
-        api_key_id: Optional[str] = None
+        api_key_id: Optional[str] = None,
+        is_super_user: bool = False
     ):
         self.org_id = org_id
         self.role = role.lower()
@@ -76,6 +77,7 @@ class AuthContext:
         self.environment = environment
         self.user_id = user_id
         self.api_key_id = api_key_id
+        self.is_super_user = is_super_user
 
     def has_permission(self, action: str) -> bool:
         if settings.rbac_emergency_bypass:
@@ -140,7 +142,8 @@ def get_auth_context(
                 org_id="org_default_dev",
                 role=AppRole.OWNER.value,
                 auth_type="master",
-                environment="dev"
+                environment="dev",
+                is_super_user=True
             )
 
         # Check if caller provided a signed JWT Bearer Access Token
@@ -158,7 +161,8 @@ def get_auth_context(
                     org_id=jwt_payload.get("org_id", "org_default"),
                     role=jwt_payload.get("role", AppRole.OWNER.value),
                     auth_type="jwt",
-                    user_id=user.id
+                    user_id=user.id,
+                    is_super_user=bool(user.is_super_user)
                 )
 
         # Check API Key
@@ -166,6 +170,7 @@ def get_auth_context(
         if api_key:
             # Check owner verification state
             mem = db.query(Membership).filter(Membership.org_id == api_key.org_id).first()
+            user = None
             if mem and mem.email:
                 user = db.query(UserAccount).filter(UserAccount.email == mem.email.lower()).first()
                 if user and not user.is_verified:
@@ -180,7 +185,8 @@ def get_auth_context(
                 auth_type="api_key",
                 project_id=api_key.project_id,
                 environment=api_key.environment or "dev",
-                api_key_id=api_key.id
+                api_key_id=api_key.id,
+                is_super_user=bool(user.is_super_user) if user else False
             )
 
         raise HTTPException(
@@ -215,7 +221,8 @@ def get_auth_context(
         return AuthContext(
             org_id=target_org,
             role=AppRole.OWNER.value,
-            auth_type="emergency_bypass"
+            auth_type="emergency_bypass",
+            is_super_user=True
         )
 
     raise HTTPException(

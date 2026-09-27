@@ -1548,20 +1548,30 @@ You can ask me to explain how our architecture is configured, query my capabilit
       document.getElementById('copy-btn-label').innerText = 'Copy';
     }
 
-    async function loadRealApiKeys() {
-      const orgId = localStorage.getItem('mb_org_id') || document.getElementById('active-org-select').value || 'org_workspace_test_1';
-      const masterKey = localStorage.getItem('mb_api_key') || 'mem_dev_master_key_123';
+    async function loadRealApiKeys(targetOrgId) {
+      const orgId = targetOrgId || localStorage.getItem('mb_org_id') || document.getElementById('active-org-select').value || 'org_workspace_test_1';
+      const token = localStorage.getItem('mb_access_token') || localStorage.getItem('mb_api_key') || 'mem_dev_master_key_123';
+      const headers = { 'Authorization': `Bearer ${token}` };
+      const apiKey = localStorage.getItem('mb_api_key');
+      if (apiKey) headers['X-API-Key'] = apiKey;
 
       try {
-        const resp = await fetch(`/v1/orgs/${orgId}/keys`, {
-          headers: { 'Authorization': `Bearer ${masterKey}` }
-        });
+        const resp = await fetch(`/v1/orgs/${orgId}/keys`, { headers });
         if (!resp.ok) return;
         const keys = await resp.json();
-        if (!Array.isArray(keys) || keys.length === 0) return;
 
         const keysTbody = document.getElementById('keys-table-body');
         const scopedTbody = document.getElementById('scoped-keys-table-body');
+
+        if (!Array.isArray(keys) || keys.length === 0) {
+          if (keysTbody) {
+            keysTbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-sm text-gray-400">No active API keys for this workspace yet. Click "+ Generate Key" to create one.</td></tr>`;
+          }
+          if (scopedTbody) {
+            scopedTbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-sm text-gray-400">No scoped keys found.</td></tr>`;
+          }
+          return;
+        }
 
         let keysHtml = '';
         let scopedHtml = '';
@@ -1847,41 +1857,7 @@ You can ask me to explain how our architecture is configured, query my capabilit
     }
 
     // Dynamic Logged-in User Profile Injection & Auth Guard
-    function initUserProfile() {
-      const activeKey = localStorage.getItem('mb_api_key');
-      const accessToken = localStorage.getItem('mb_access_token');
-      if (!activeKey && !accessToken) {
-        window.location.href = '/landing';
-        return;
-      }
-
-      // Strict backend auth and verification guard
-      const authHeaders = {};
-      if (accessToken) authHeaders['Authorization'] = 'Bearer ' + accessToken;
-      if (activeKey) authHeaders['X-API-Key'] = activeKey;
-
-      fetch('/v1/auth/me', { headers: authHeaders, credentials: 'include' })
-        .then(r => {
-          if (!r.ok) {
-            localStorage.clear();
-            window.location.href = '/landing';
-            return null;
-          }
-          return r.json();
-        })
-        .then(data => {
-          if (data && data.user) {
-            if (data.user.email_verified === false) {
-              alert('Your email address is unverified. Please check your inbox and verify your email to access the console.');
-              localStorage.clear();
-              window.location.href = '/landing';
-            }
-          }
-        })
-        .catch(() => {});
-
-      const userName = localStorage.getItem('mb_user_name') || 'Developer';
-      const userEmail = localStorage.getItem('mb_user_email') || 'developer@company.internal';
+    function renderUserProfileUI(userName, userEmail, activeKey) {
       const userInitial = userName.trim().charAt(0).toUpperCase() || 'D';
       const userSlug = userName.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
 
@@ -1951,8 +1927,71 @@ You can ask me to explain how our architecture is configured, query my capabilit
         const adminTab = document.getElementById('tab-admin');
         if (adminTab) adminTab.style.display = 'inline-flex';
       }
+    }
 
-      // 9. Load real persistent API keys from backend database
+    function initUserProfile() {
+      const activeKey = localStorage.getItem('mb_api_key');
+      const accessToken = localStorage.getItem('mb_access_token');
+      if (!activeKey && !accessToken) {
+        window.location.href = '/landing';
+        return;
+      }
+
+      // Initial fast paint from local cache
+      const cachedName = localStorage.getItem('mb_user_name') || 'Developer';
+      const cachedEmail = localStorage.getItem('mb_user_email') || 'developer@company.internal';
+      renderUserProfileUI(cachedName, cachedEmail, activeKey);
+
+      // Strict backend auth and verification guard
+      const authHeaders = {};
+      if (accessToken) authHeaders['Authorization'] = 'Bearer ' + accessToken;
+      if (activeKey) authHeaders['X-API-Key'] = activeKey;
+
+      fetch('/v1/auth/me', { headers: authHeaders, credentials: 'include' })
+        .then(r => {
+          if (!r.ok) {
+            localStorage.clear();
+            window.location.href = '/landing';
+            return null;
+          }
+          return r.json();
+        })
+        .then(data => {
+          if (!data) return;
+          if (data.user && data.user.email_verified === false) {
+            alert('Your email address is unverified. Please check your inbox and verify your email to access the console.');
+            localStorage.clear();
+            window.location.href = '/landing';
+            return;
+          }
+
+          // Synchronize localStorage with live authenticated session data
+          if (data.org && data.org.id) {
+            localStorage.setItem('mb_org_id', data.org.id);
+          }
+          if (data.user) {
+            if (data.user.name) localStorage.setItem('mb_user_name', data.user.name);
+            if (data.user.email) localStorage.setItem('mb_user_email', data.user.email);
+            if (data.user.is_super_user) localStorage.setItem('mb_is_super_user', 'true');
+          }
+          if (data.access_token) {
+            localStorage.setItem('mb_access_token', data.access_token);
+          }
+
+          // Re-render UI with authoritative verified profile
+          const verifiedName = (data.user && data.user.name) ? data.user.name : (localStorage.getItem('mb_user_name') || 'Developer');
+          const verifiedEmail = (data.user && data.user.email) ? data.user.email : (localStorage.getItem('mb_user_email') || 'developer@company.internal');
+          renderUserProfileUI(verifiedName, verifiedEmail, activeKey);
+
+          // Authoritatively load keys for the verified org
+          const verifiedOrgId = data.org ? data.org.id : (localStorage.getItem('mb_org_id') || '');
+          if (verifiedOrgId) {
+            loadRealApiKeys(verifiedOrgId);
+          }
+        })
+        .catch(() => {});
+
+      // Initial keys load for cached org
       loadRealApiKeys();
     }
 
