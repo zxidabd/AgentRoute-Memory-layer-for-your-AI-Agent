@@ -244,6 +244,36 @@ def init_db():
             except Exception:
                 pass
 
+        # ── Cleanup: Remove auto-generated Session Key / Google Session Key records ──
+        # Step 1: For orgs that have NO "Default Live Key", promote one session key
+        try:
+            conn.execute(text("""
+                UPDATE api_keys
+                SET name = 'Default Live Key'
+                WHERE id IN (
+                    SELECT MIN(k.id) FROM api_keys k
+                    WHERE (k.name LIKE 'Session Key %' OR k.name LIKE 'Google Session Key %')
+                    AND k.is_active = 1
+                    GROUP BY k.org_id
+                    HAVING k.org_id NOT IN (
+                        SELECT org_id FROM api_keys WHERE name = 'Default Live Key'
+                    )
+                );
+            """))
+            conn.commit()
+        except Exception:
+            pass
+
+        # Step 2: Delete all remaining session keys (each org now has a Default Live Key)
+        try:
+            conn.execute(text("""
+                DELETE FROM api_keys
+                WHERE (name LIKE 'Session Key %' OR name LIKE 'Google Session Key %');
+            """))
+            conn.commit()
+        except Exception:
+            pass
+
 
 @contextmanager
 def get_db() -> Generator[Session, None, None]:

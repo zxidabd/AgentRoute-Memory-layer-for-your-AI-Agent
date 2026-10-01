@@ -893,15 +893,26 @@ def verify_email(
     else:
         org = db.query(Organization).filter(Organization.id == mem.org_id).first()
         proj = db.query(Project).filter(Project.org_id == org.id).first() if org else None
-        key_res = APIKeyService.generate_api_key(
-            db=db,
-            org_id=org.id if org else "org_default",
-            name=f"Session Key {secrets.token_hex(2)}",
-            role="owner",
-            project_id=proj.id if proj else None,
-            environment="prod"
-        )
-        api_key = key_res["api_key"]
+        
+        # Check if an active API key already exists for this organization
+        existing_key = db.query(APIKey).filter(
+            APIKey.org_id == org.id,
+            APIKey.is_active == True,
+            APIKey.revoked_at == None
+        ).first() if org else None
+
+        if existing_key:
+            api_key = None
+        else:
+            key_res = APIKeyService.generate_api_key(
+                db=db,
+                org_id=org.id if org else "org_default",
+                name="Default Live Key",
+                role="owner",
+                project_id=proj.id if proj else None,
+                environment="prod"
+            )
+            api_key = key_res["api_key"]
 
     # Issue initial JWT Access Token & Set Refresh Token Cookie for instant dashboard access
     access_token = create_access_token(
@@ -1294,14 +1305,25 @@ def self_serve_login(
     db.commit()
 
     # Also generate an API key for backward compatibility with dashboard
-    key_res = APIKeyService.generate_api_key(
-        db=db,
-        org_id=org.id if org else "org_default",
-        name=f"Session Key {secrets.token_hex(2)}",
-        role=mem.role,
-        project_id=proj.id if proj else None,
-        environment="prod"
-    )
+    # Only create if no active key exists for this organization
+    existing_key = db.query(APIKey).filter(
+        APIKey.org_id == (org.id if org else "org_default"),
+        APIKey.is_active == True,
+        APIKey.revoked_at == None
+    ).first()
+
+    if existing_key:
+        api_key = None  # Don't expose existing key; dashboard loads keys separately
+    else:
+        key_res = APIKeyService.generate_api_key(
+            db=db,
+            org_id=org.id if org else "org_default",
+            name="Default Live Key",
+            role=mem.role,
+            project_id=proj.id if proj else None,
+            environment="prod"
+        )
+        api_key = key_res["api_key"]
 
     # Set refresh token as httpOnly secure cookie
     cookie_max_age = settings.refresh_token_expire_days * 86400
@@ -1326,7 +1348,7 @@ def self_serve_login(
         "org": {"id": org.id, "name": org.name, "tier": org.tier} if org else None,
         "project_id": proj.id if proj else None,
         "role": mem.role,
-        "api_key": key_res["api_key"],
+        "api_key": api_key,
         "user": {"name": user_name, "email": clean_email, "role": mem.role}
     }
 
@@ -1527,15 +1549,26 @@ def google_auth(
     else:
         org = db.query(Organization).filter(Organization.id == mem.org_id).first()
         proj = db.query(Project).filter(Project.org_id == org.id).first() if org else None
-        key_res = APIKeyService.generate_api_key(
-            db=db,
-            org_id=org.id if org else "org_default",
-            name=f"Google Session Key {secrets.token_hex(2)}",
-            role="owner",
-            project_id=proj.id if proj else None,
-            environment="prod"
-        )
-        api_key = key_res["api_key"]
+
+        # Check if an active API key already exists for this organization
+        existing_key = db.query(APIKey).filter(
+            APIKey.org_id == org.id,
+            APIKey.is_active == True,
+            APIKey.revoked_at == None
+        ).first() if org else None
+
+        if existing_key:
+            api_key = None
+        else:
+            key_res = APIKeyService.generate_api_key(
+                db=db,
+                org_id=org.id if org else "org_default",
+                name="Default Live Key",
+                role="owner",
+                project_id=proj.id if proj else None,
+                environment="prod"
+            )
+            api_key = key_res["api_key"]
 
     # Issue JWT access token & set secure refresh token cookie
     access_token = create_access_token(
