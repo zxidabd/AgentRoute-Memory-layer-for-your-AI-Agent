@@ -97,6 +97,10 @@ class UserAccount(Base):
     subscription_status = Column(String(50), default="trialing") # active, trialing, expired, canceled
     plan_tier = Column(String(50), default="free_trial")         # free_trial, starter, pro, enterprise
     trial_ends_at = Column(DateTime(timezone=True), nullable=True)
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
+    totp_secret = Column(String(64), nullable=True)
+    totp_enabled = Column(Boolean, default=False, nullable=False)
 
 
 class EmailVerificationToken(Base):
@@ -415,3 +419,38 @@ class DataLineageEdge(Base):
         Index("ix_lineage_org_upstream", "org_id", "upstream_asset_fqn"),
         Index("ix_lineage_org_downstream", "org_id", "downstream_asset_fqn"),
     )
+
+
+class SecurityAuditLog(Base):
+    """Immutable audit trail for authentication, key changes, and security events."""
+    __tablename__ = "security_audit_logs"
+
+    id = Column(String(64), primary_key=True)
+    user_id = Column(String(64), nullable=True, index=True)
+    org_id = Column(String(64), nullable=True, index=True)
+    user_email = Column(String(255), nullable=True)
+    event_type = Column(String(64), nullable=False, index=True) # login_success, login_failed, key_created, key_revoked, 2fa_enabled, etc.
+    ip_address = Column(String(64), nullable=True)
+    user_agent = Column(String(512), nullable=True)
+    details = Column(String(1024), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+
+
+class SubscriptionPayment(Base):
+    """Platform subscription payment transactions (Stripe, Razorpay, or Admin overrides)."""
+    __tablename__ = "subscription_payments"
+
+    id = Column(String(64), primary_key=True)
+    user_id = Column(String(64), nullable=False, index=True)
+    org_id = Column(String(64), nullable=True, index=True)
+    user_email = Column(String(255), nullable=False, index=True)
+    user_name = Column(String(255), nullable=True)
+    plan_tier = Column(String(50), nullable=False) # starter, growth, scale, enterprise, pro
+    billing_cycle = Column(String(50), default="monthly") # monthly, yearly
+    amount = Column(Float, nullable=False, default=0.0)
+    currency = Column(String(10), default="USD")
+    provider = Column(String(50), default="stripe") # stripe, razorpay, admin_grant
+    provider_txn_id = Column(String(128), nullable=True)
+    provider_order_id = Column(String(128), nullable=True)
+    status = Column(String(50), default="paid") # paid, refunded, failed
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)

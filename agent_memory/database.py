@@ -138,6 +138,10 @@ def init_db():
             ("subscription_status", "VARCHAR(50) DEFAULT 'trialing'"),
             ("plan_tier", "VARCHAR(50) DEFAULT 'free_trial'"),
             ("trial_ends_at", "TIMESTAMP"),
+            ("failed_login_attempts", "INTEGER DEFAULT 0"),
+            ("locked_until", "TIMESTAMP"),
+            ("totp_secret", "VARCHAR(64)"),
+            ("totp_enabled", "BOOLEAN DEFAULT 0"),
         ]
         for col_name, col_def in new_cols_users:
             try:

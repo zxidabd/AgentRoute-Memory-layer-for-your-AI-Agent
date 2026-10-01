@@ -480,6 +480,83 @@
     .rounded-lg { border-radius: 8px; }
     .px-2\.5 { padding-left: 10px; padding-right: 10px; }
     .py-1 { padding-top: 4px; padding-bottom: 4px; }
+
+    /* Admin Action Dropdown Menu & Pills matching WebinarFlow */
+    .dropdown-container {
+      position: relative;
+      display: inline-block;
+    }
+    .btn-action-dots {
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+      color: var(--color-text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+    .btn-action-dots:hover {
+      background: var(--color-bg-muted);
+      color: var(--color-text-primary);
+      border-color: var(--color-border-strong);
+    }
+    .admin-action-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 4px);
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      width: 220px;
+      z-index: 1000;
+      padding: 6px 0;
+      display: none;
+      text-align: left;
+    }
+    .admin-action-menu.show {
+      display: block;
+    }
+    .admin-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 8px 14px;
+      border: none;
+      background: transparent;
+      text-align: left;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.12s;
+      white-space: nowrap;
+    }
+    .admin-menu-item:hover {
+      background-color: #f1f5f9;
+    }
+    .admin-menu-item.green { color: #10b981; }
+    .admin-menu-item.purple { color: #8b5cf6; }
+    .admin-menu-item.blue { color: #3b82f6; }
+    .admin-menu-item.red { color: #ef4444; }
+    .admin-menu-divider {
+      height: 1px;
+      background-color: #e2e8f0;
+      margin: 4px 0;
+    }
+    .pill-active { background: rgba(16, 185, 129, 0.12); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 9999px; padding: 3px 12px; font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; }
+    .pill-trialing { background: rgba(59, 130, 246, 0.12); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 9999px; padding: 3px 12px; font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; }
+    .pill-expired { background: rgba(239, 68, 68, 0.12); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 9999px; padding: 3px 12px; font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; }
+    .pill-canceled { background: rgba(107, 114, 128, 0.12); color: #4b5563; border: 1px solid rgba(107, 114, 128, 0.3); border-radius: 9999px; padding: 3px 12px; font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; }
+    .pill-starter { background: rgba(79, 70, 229, 0.12); color: #4f46e5; border: 1px solid rgba(79, 70, 229, 0.3); border-radius: 9999px; padding: 3px 12px; font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; }
+    .pill-pro { background: rgba(139, 92, 246, 0.12); color: #7c3aed; border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 9999px; padding: 3px 12px; font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; }
+    .pill-admin { background: rgba(245, 158, 11, 0.14); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 4px; padding: 1px 6px; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; margin-top: 2px; }
   </style>
 </head>
 <body>
@@ -530,6 +607,9 @@
         </button>
         <button onclick="switchTab('billing')" id="tab-billing">
           Billing
+        </button>
+        <button onclick="switchTab('security')" id="tab-security">
+          Security 🛡️
         </button>
         <button onclick="switchTab('support')" id="tab-support">
           Support
@@ -1121,7 +1201,122 @@ def chat_with_memory(user_id: str, user_message: str):
       </div>
     </section>
 
-    <!-- VIEW: ADMIN SUPERUSER CONTROLS -->
+    <!-- VIEW: SECURITY & SESSIONS -->
+    <section id="view-security" class="view-section hidden">
+      <div class="flex-row justify-between items-center mb-4">
+        <div>
+          <h2 style="font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+            Security &amp; Session Management 🛡️
+          </h2>
+          <p class="text-sm text-muted">Two-factor authenticator app enforcement, active device sessions, and audit logs.</p>
+        </div>
+        <div class="flex-row gap-2">
+          <button type="button" onclick="loadSecurityData()" class="btn btn-secondary" style="height: 36px; font-size: 13px;">
+            🔄 Refresh Security Status
+          </button>
+        </div>
+      </div>
+
+      <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+        <!-- Two-Factor Authentication Card -->
+        <div class="card">
+          <div class="flex-row justify-between items-center mb-4">
+            <div>
+              <h3 style="font-size: 16px; font-weight: 600;">Two-Factor Authentication (2FA)</h3>
+              <p class="text-xs text-muted">Protect your account using Google Authenticator, Authy, or 1Password (TOTP).</p>
+            </div>
+            <div id="2fa-status-badge">
+              <span class="badge badge-neutral">Checking...</span>
+            </div>
+          </div>
+
+          <div id="2fa-disabled-view">
+            <p class="text-sm text-muted" style="margin-bottom: 16px;">
+              Two-factor authentication adds an extra layer of security to your AgentRoute workspace.
+            </p>
+            <button onclick="start2FASetup()" class="btn btn-primary" style="height: 36px; font-size: 13px;">
+              🔐 Configure Authenticator App
+            </button>
+          </div>
+
+          <div id="2fa-setup-view" style="display: none; background: var(--color-bg-subtle); border: 1px solid var(--color-border); border-radius: 8px; padding: 16px; margin-top: 12px;">
+            <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Scan with Authenticator App</h4>
+            <p class="text-xs text-muted" style="margin-bottom: 12px;">Enter this secret key manually into Google Authenticator or Authy:</p>
+            <div style="background: var(--color-bg); padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 14px; font-weight: 700; color: var(--color-accent); letter-spacing: 2px; margin-bottom: 14px;" id="2fa-secret-display">
+              ...
+            </div>
+            <div class="flex-row gap-2" style="margin-bottom: 10px;">
+              <input type="text" id="2fa-verify-code" placeholder="6-digit code (e.g. 123456)" class="input-text" style="width: 180px; height: 36px; font-size: 14px; text-align: center; letter-spacing: 2px;" maxlength="6">
+              <button onclick="confirmEnable2FA()" class="btn btn-primary" style="height: 36px; font-size: 13px;">
+                Verify &amp; Activate 2FA
+              </button>
+              <button onclick="cancel2FASetup()" class="btn btn-secondary" style="height: 36px; font-size: 13px;">
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          <div id="2fa-enabled-view" style="display: none;">
+            <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 14px; margin-bottom: 16px; color: #059669; font-size: 13px;">
+              ✓ Two-factor authentication is active. You will be prompted for a 6-digit TOTP code when signing in.
+            </div>
+            <button onclick="handleDisable2FA()" class="btn btn-danger" style="height: 34px; font-size: 12px;">
+              Turn Off 2FA
+            </button>
+          </div>
+        </div>
+
+        <!-- Active Sessions & Device Management -->
+        <div class="card">
+          <div class="flex-row justify-between items-center mb-4">
+            <div>
+              <h3 style="font-size: 16px; font-weight: 600;">Active Sessions</h3>
+              <p class="text-xs text-muted">Devices and browsers currently logged into your account.</p>
+            </div>
+            <button onclick="handleRevokeAllOtherSessions()" class="btn btn-danger" style="height: 32px; font-size: 12px; padding: 0 10px;">
+              Log Out All Other Devices
+            </button>
+          </div>
+
+          <div id="sessions-list-container" class="flex-col gap-2">
+            <div class="text-xs text-muted">Loading active sessions...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security Activity & Audit Log -->
+      <div class="card">
+        <div class="flex-row justify-between items-center mb-4">
+          <div>
+            <h3 style="font-size: 16px; font-weight: 600;">Security Activity Log</h3>
+            <p class="text-xs text-muted">Recent authentication events, IP addresses, and key modifications.</p>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Event Type</th>
+                <th>IP Address</th>
+                <th>Device / User Agent</th>
+                <th>Details</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody id="security-logs-table-body">
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--color-text-secondary); padding: 20px;">
+                  Loading security events...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW: ADMIN SUPERUSER CONTROLS (MATCHING WEBINARFLOW) -->
     <section id="view-admin" class="view-section hidden">
       <div class="flex-row justify-between items-center mb-4">
         <div>
@@ -1134,8 +1329,8 @@ def chat_with_memory(user_id: str, user_message: str):
           <button type="button" onclick="loadAdminDashboardData()" class="btn btn-secondary" style="height: 36px; font-size: 13px;">
             🔄 Refresh Metrics
           </button>
-          <button type="button" onclick="handleResetDemoPayments()" class="btn btn-danger" style="height: 36px; font-size: 13px;">
-            🧹 Reset Demo Payments
+          <button type="button" onclick="handleResetAllPayments()" class="btn btn-danger" style="height: 36px; font-size: 13px;">
+            🧹 Reset All Payments to ₹0
           </button>
         </div>
       </div>
@@ -1143,33 +1338,33 @@ def chat_with_memory(user_id: str, user_message: str):
       <!-- Revenue KPIs Grid -->
       <div class="grid-4" style="margin-bottom: 24px;">
         <div class="card metric-card">
-          <div class="metric-label">Total Platform MRR (USD)</div>
+          <div class="metric-label">Total Platform Revenue (USD)</div>
           <div class="metric-value" id="admin-mrr-usd">$0.00</div>
-          <div class="text-xs text-muted">Stripe &amp; Enterprise volume</div>
+          <div class="text-xs text-muted" id="admin-stripe-count">Stripe Volume</div>
         </div>
         <div class="card metric-card">
-          <div class="metric-label">Total Platform MRR (INR)</div>
+          <div class="metric-label">Total Platform Revenue (INR)</div>
           <div class="metric-value" id="admin-mrr-inr">₹0.00</div>
-          <div class="text-xs text-muted">Razorpay UPI &amp; Cards</div>
+          <div class="text-xs text-muted" id="admin-razorpay-count">Razorpay UPI &amp; Cards</div>
         </div>
         <div class="card metric-card">
           <div class="metric-label">Registered Users</div>
           <div class="metric-value" id="admin-total-users">0</div>
-          <div class="text-xs text-muted" id="admin-verified-users">0 verified</div>
+          <div class="text-xs text-muted" id="admin-users-subtext">0 active • 0 trialing</div>
         </div>
         <div class="card metric-card">
-          <div class="metric-label">Plan Breakdown</div>
+          <div class="metric-label">Subscriptions Breakdown</div>
           <div class="metric-value" style="font-size: 18px;" id="admin-plan-breakdown">0 Starter / 0 Pro</div>
           <div class="text-xs text-muted">Active subscriptions</div>
         </div>
       </div>
 
-      <!-- User Management & Access Controls -->
-      <div class="card">
+      <!-- User Accounts Table (MATCHING WEBINARFLOW SCREENSHOT) -->
+      <div class="card" style="margin-bottom: 24px;">
         <div class="flex-row justify-between items-center mb-4">
           <div>
-            <h3 style="font-size: 16px; font-weight: 600;">User Accounts &amp; Free Trial Controls</h3>
-            <p class="text-xs text-muted">Search any user to manually override plan tiers, extend trials, or toggle subscription access.</p>
+            <h3 style="font-size: 16px; font-weight: 600;">Registered Users</h3>
+            <p class="text-xs text-muted">Manage subscriptions, override plans, or extend trials matching WebinarFlow actions.</p>
           </div>
           <div>
             <input type="text" id="admin-user-search" oninput="handleAdminUserSearch(this.value)" placeholder="Search by email or name..." class="input-text" style="width: 280px; height: 36px; font-size: 13px;">
@@ -1180,17 +1375,67 @@ def chat_with_memory(user_id: str, user_message: str):
           <table>
             <thead>
               <tr>
-                <th>User / Developer</th>
-                <th>Status</th>
-                <th>Plan Tier</th>
-                <th>Trial Remaining</th>
-                <th>Superuser Actions</th>
+                <th style="min-width: 220px;">User</th>
+                <th style="min-width: 100px;">Status</th>
+                <th style="min-width: 100px;">Plan</th>
+                <th style="min-width: 90px;">Trial</th>
+                <th style="min-width: 120px;">Created</th>
+                <th style="text-align: right; min-width: 90px;">Actions</th>
               </tr>
             </thead>
             <tbody id="admin-users-table-body">
               <tr>
-                <td colspan="5" style="text-align: center; color: var(--color-text-secondary); padding: 24px;">
+                <td colspan="6" style="text-align: center; color: var(--color-text-secondary); padding: 24px;">
                   Loading registered user registry...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Subscription Payment History (Ledger) -->
+      <div class="card">
+        <div class="flex-row justify-between items-center mb-4">
+          <div>
+            <h3 style="font-size: 16px; font-weight: 600;">Subscription Payment History</h3>
+            <p class="text-xs text-muted">Live ledger of customer subscription payments across Stripe and Razorpay.</p>
+          </div>
+          <div class="flex-row gap-2">
+            <input type="text" id="admin-payment-search" oninput="handleSubPaymentSearch()" placeholder="Search customer email..." class="input-text" style="width: 200px; height: 36px; font-size: 13px;">
+            <select id="admin-payment-provider" onchange="handleSubPaymentSearch()" class="input-text" style="height: 36px; font-size: 13px;">
+              <option value="">All Gateways</option>
+              <option value="stripe">Stripe (USD)</option>
+              <option value="razorpay">Razorpay (INR)</option>
+              <option value="admin_grant">Admin Grant</option>
+            </select>
+            <select id="admin-payment-plan" onchange="handleSubPaymentSearch()" class="input-text" style="height: 36px; font-size: 13px;">
+              <option value="">All Plans</option>
+              <option value="starter">Starter</option>
+              <option value="pro">Pro</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Plan Tier</th>
+                <th>Billing Cycle</th>
+                <th>Amount</th>
+                <th>Provider</th>
+                <th>Txn / Order ID</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th style="text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="admin-payments-table-body">
+              <tr>
+                <td colspan="9" style="text-align: center; color: var(--color-text-secondary); padding: 24px;">
+                  Loading subscription payments ledger...
                 </td>
               </tr>
             </tbody>
@@ -1274,7 +1519,7 @@ def chat_with_memory(user_id: str, user_message: str):
 
   <script>
     function switchTab(tab) {
-      ['explorer', 'playground', 'keys', 'sdk', 'billing', 'workspaces', 'support', 'admin'].forEach(t => {
+      ['explorer', 'playground', 'keys', 'sdk', 'billing', 'security', 'workspaces', 'support', 'admin'].forEach(t => {
         const el = document.getElementById(`view-${t}`);
         const btn = document.getElementById(`tab-${t}`);
         if (el) el.classList.add('hidden');
@@ -1289,6 +1534,9 @@ def chat_with_memory(user_id: str, user_message: str):
 
       if (tab === 'keys' || tab === 'workspaces') {
         loadRealApiKeys();
+      }
+      if (tab === 'security') {
+        loadSecurityData();
       }
       if (tab === 'admin') {
         loadAdminDashboardData();
@@ -2059,16 +2307,40 @@ You can ask me to explain how our architecture is configured, query my capabilit
       }
     }
 
-    // Superuser Admin Section Functions
+    // ── Superuser Admin Section Functions (WebinarFlow Integrated) ──
     let allAdminUsers = [];
+    let allSubPayments = [];
+    let activeDropdownId = null;
+
+    // Close any open action dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.dropdown-container')) {
+        document.querySelectorAll('.admin-action-menu').forEach(el => el.classList.remove('show'));
+        activeDropdownId = null;
+      }
+    });
+
+    function toggleUserDropdown(event, userId) {
+      event.stopPropagation();
+      const menu = document.getElementById(`dropdown-${userId}`);
+      if (!menu) return;
+
+      const isOpen = menu.classList.contains('show');
+      document.querySelectorAll('.admin-action-menu').forEach(el => el.classList.remove('show'));
+
+      if (!isOpen) {
+        menu.classList.add('show');
+        activeDropdownId = userId;
+      } else {
+        activeDropdownId = null;
+      }
+    }
 
     async function loadAdminDashboardData() {
       const token = localStorage.getItem('mb_access_token');
       const apiKey = localStorage.getItem('mb_api_key');
       const userEmail = localStorage.getItem('mb_user_email') || 'abdullahzaid509@gmail.com';
-      const headers = {
-        'x-user-email': userEmail
-      };
+      const headers = { 'x-user-email': userEmail };
       if (token) headers['Authorization'] = `Bearer ${token}`;
       else if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
@@ -2081,11 +2353,18 @@ You can ask me to explain how our architecture is configured, query my capabilit
             document.getElementById('admin-mrr-usd').innerText = stats.kpis.total_platform_revenue.usd;
             document.getElementById('admin-mrr-inr').innerText = stats.kpis.total_platform_revenue.inr;
             document.getElementById('admin-total-users').innerText = stats.kpis.total_users;
-            document.getElementById('admin-verified-users').innerText = `${stats.kpis.verified_users} verified`;
+          }
+          if (stats.gateways) {
+            if (document.getElementById('admin-stripe-count')) {
+              document.getElementById('admin-stripe-count').innerText = `${stats.gateways.stripe.active_subscriptions} Stripe subscriptions ($${stats.gateways.stripe.estimated_monthly_volume}/mo)`;
+            }
+            if (document.getElementById('admin-razorpay-count')) {
+              document.getElementById('admin-razorpay-count').innerText = `${stats.gateways.razorpay.active_subscriptions} Razorpay subscriptions (₹${stats.gateways.razorpay.estimated_monthly_volume}/mo)`;
+            }
           }
           if (stats.plan_breakdown) {
             document.getElementById('admin-plan-breakdown').innerText =
-              `${stats.plan_breakdown.starter} Starter / ${stats.plan_breakdown.pro} Pro / ${stats.plan_breakdown.scale} Scale`;
+              `${stats.plan_breakdown.starter} Starter / ${stats.plan_breakdown.pro} Pro`;
           }
         }
       } catch (e) {
@@ -2096,12 +2375,20 @@ You can ask me to explain how our architecture is configured, query my capabilit
       try {
         const resp = await fetch('/v1/admin/users', { headers });
         if (resp.ok) {
-          allAdminUsers = await resp.json();
+          const data = await resp.json();
+          allAdminUsers = Array.isArray(data) ? data : (data.users || []);
+          if (data.stats && document.getElementById('admin-users-subtext')) {
+            document.getElementById('admin-users-subtext').innerText =
+              `${data.stats.active} active • ${data.stats.trialing} trialing • ${data.stats.expired} expired`;
+          }
           renderAdminUsers(allAdminUsers);
         }
       } catch (e) {
         console.warn('Could not load admin users:', e);
       }
+
+      // 3. Fetch Subscription Payments Ledger
+      loadSubPayments();
     }
 
     function renderAdminUsers(users) {
@@ -2109,54 +2396,150 @@ You can ask me to explain how our architecture is configured, query my capabilit
       if (!tbody) return;
 
       if (!users || users.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--color-text-secondary); padding: 24px;">No user accounts found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--color-text-secondary); padding: 24px;">No user accounts found.</td></tr>`;
         return;
       }
 
       tbody.innerHTML = users.map(u => {
-        const statusBadge = u.subscription_status === 'active'
-          ? `<span class="badge badge-success">active</span>`
-          : u.subscription_status === 'trialing'
-          ? `<span class="badge badge-info">trialing</span>`
-          : `<span class="badge badge-warning">${u.subscription_status || 'trialing'}</span>`;
+        const statusLower = (u.subscription_status || 'trialing').toLowerCase();
+        let statusBadge = `<span class="pill-trialing">Trialing</span>`;
+        if (statusLower === 'active') statusBadge = `<span class="pill-active">Active</span>`;
+        else if (statusLower === 'expired') statusBadge = `<span class="pill-expired">Expired</span>`;
+        else if (statusLower === 'canceled') statusBadge = `<span class="pill-canceled">Canceled</span>`;
 
-        const superBadge = u.is_super_user ? ` <span style="font-size: 11px; color: #f59e0b; font-weight: bold;">👑 ADMIN</span>` : '';
-        const trialRemaining = u.subscription_status === 'trialing'
-          ? `${u.days_remaining}d remaining`
-          : (u.subscription_status === 'active' ? 'Active Paid' : 'Expired');
+        const planLower = (u.plan_tier || 'free_trial').toLowerCase();
+        let planBadge = `<span class="badge badge-neutral">Free Trial</span>`;
+        if (planLower === 'pro' || planLower === 'growth') planBadge = `<span class="pill-pro">Pro</span>`;
+        else if (planLower === 'starter') planBadge = `<span class="pill-starter">Starter</span>`;
+
+        const adminBadge = u.is_super_user ? `<span class="pill-admin">ADMIN</span>` : '';
+
+        // Trial remaining logic matching WebinarFlow
+        let trialText = '—';
+        if (statusLower === 'trialing' && u.trial_ends_at) {
+          const end = new Date(u.trial_ends_at);
+          const now = new Date();
+          if (end < now) trialText = 'Expired';
+          else {
+            const days = Math.ceil((end.getTime() - now.getTime()) / 86400000);
+            trialText = `${days}d left`;
+          }
+        }
+
+        // Formatted created date
+        let createdFormatted = '—';
+        if (u.created_at) {
+          createdFormatted = new Date(u.created_at).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          });
+        }
 
         return `
           <tr>
             <td style="padding: 12px 16px;">
-              <div style="font-weight: 500; color: var(--color-text-primary);">${u.name || 'Developer'}${superBadge}</div>
-              <div class="text-xs text-muted font-mono">${u.email}</div>
+              <div style="font-weight: 600; color: var(--color-text-primary); display: flex; align-items: center; gap: 8px;">
+                ${escapeHtml(u.name || u.full_name || 'Developer')}
+                ${adminBadge}
+              </div>
+              <div class="text-xs text-muted font-mono" style="margin-top: 2px;">${escapeHtml(u.email)}</div>
             </td>
             <td style="padding: 12px 16px;">${statusBadge}</td>
-            <td style="padding: 12px 16px; font-weight: 500; text-transform: capitalize;">${u.plan_tier || 'free_trial'}</td>
-            <td style="padding: 12px 16px; font-size: 13px; color: var(--color-text-secondary);">${trialRemaining}</td>
-            <td style="padding: 12px 16px;">
-              <div style="display: flex; gap: 8px; align-items: center;">
-                <select onchange="handleAdminOverridePlan('${u.id}', this.value)" class="input-text" style="height: 30px; font-size: 12px; padding: 0 8px;">
-                  <option value="" disabled selected>Change Plan</option>
-                  <option value="starter">Starter</option>
-                  <option value="pro">Pro ($49)</option>
-                  <option value="scale">Scale ($249)</option>
-                  <option value="enterprise">Enterprise</option>
-                </select>
-                <select onchange="handleAdminExtendTrial('${u.id}', this.value)" class="input-text" style="height: 30px; font-size: 12px; padding: 0 8px;">
-                  <option value="" disabled selected>Extend Trial</option>
-                  <option value="3">+3 Days</option>
-                  <option value="7">+7 Days</option>
-                  <option value="30">+30 Days</option>
-                </select>
-                <button onclick="handleAdminToggleStatus('${u.id}', '${u.subscription_status === 'active' ? 'canceled' : 'active'}')" class="btn btn-secondary" style="height: 30px; font-size: 11px; padding: 0 10px;">
-                  ${u.subscription_status === 'active' ? 'Cancel' : 'Activate'}
+            <td style="padding: 12px 16px;">${planBadge}</td>
+            <td style="padding: 12px 16px; font-size: 13px; color: var(--color-text-secondary);">${trialText}</td>
+            <td style="padding: 12px 16px; font-size: 13px; color: var(--color-text-secondary);">${createdFormatted}</td>
+            <td style="padding: 12px 16px; text-align: right;">
+              <div class="dropdown-container">
+                <button type="button" class="btn-action-dots" onclick="toggleUserDropdown(event, '${u.id}')" title="Actions">
+                  •••
                 </button>
+                <div id="dropdown-${u.id}" class="admin-action-menu">
+                  <button type="button" class="admin-menu-item green" onclick="handleAdminSubscriptionAction('${u.id}', 'activate-starter')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    Activate (Starter)
+                  </button>
+                  <button type="button" class="admin-menu-item purple" onclick="handleAdminSubscriptionAction('${u.id}', 'activate-pro')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    Activate (Pro)
+                  </button>
+                  <button type="button" class="admin-menu-item blue" onclick="handleAdminSubscriptionAction('${u.id}', 'extend-3')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    Extend Trial +3 Days
+                  </button>
+                  <button type="button" class="admin-menu-item blue" onclick="handleAdminSubscriptionAction('${u.id}', 'extend-7')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    Extend Trial +7 Days
+                  </button>
+                  <div class="admin-menu-divider"></div>
+                  <button type="button" class="admin-menu-item red" onclick="handleAdminSubscriptionAction('${u.id}', 'expire')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    Force Expire
+                  </button>
+                  <button type="button" class="admin-menu-item red" onclick="handleAdminSubscriptionAction('${u.id}', 'cancel')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    Cancel Subscription
+                  </button>
+                </div>
               </div>
             </td>
           </tr>
         `;
       }).join('');
+    }
+
+    async function handleAdminSubscriptionAction(userId, action) {
+      document.querySelectorAll('.admin-action-menu').forEach(el => el.classList.remove('show'));
+      const token = localStorage.getItem('mb_access_token');
+      const apiKey = localStorage.getItem('mb_api_key');
+      const userEmail = localStorage.getItem('mb_user_email') || 'abdullahzaid509@gmail.com';
+      const headers = {
+        'Content-Type': 'application/json',
+        'x-user-email': userEmail
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      else if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+      let payload = {};
+      switch (action) {
+        case 'activate-starter':
+          payload = { subscription_status: 'active', plan_tier: 'starter' };
+          break;
+        case 'activate-pro':
+          payload = { subscription_status: 'active', plan_tier: 'pro' };
+          break;
+        case 'extend-3':
+          payload = { subscription_status: 'trialing', plan_tier: 'free_trial', extend_trial_days: 3 };
+          break;
+        case 'extend-7':
+          payload = { subscription_status: 'trialing', plan_tier: 'free_trial', extend_trial_days: 7 };
+          break;
+        case 'expire':
+          payload = { subscription_status: 'expired', plan_tier: 'free_trial' };
+          break;
+        case 'cancel':
+          payload = { subscription_status: 'canceled', plan_tier: 'free_trial' };
+          break;
+        default:
+          return;
+      }
+
+      try {
+        const resp = await fetch(`/v1/admin/users/${userId}/subscription`, {
+          method: 'PATCH',
+          headers: headers,
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          alert(`✓ ${data.message || 'User subscription updated successfully!'}`);
+          loadAdminDashboardData();
+        } else {
+          alert(`Action failed: ${data.detail || 'Could not update user'}`);
+        }
+      } catch (e) {
+        alert('Action failed: ' + e.message);
+      }
     }
 
     function handleAdminUserSearch(query) {
@@ -2167,81 +2550,367 @@ You can ask me to explain how our architecture is configured, query my capabilit
       const q = query.toLowerCase().trim();
       const filtered = allAdminUsers.filter(u =>
         (u.email && u.email.toLowerCase().includes(q)) ||
-        (u.name && u.name.toLowerCase().includes(q))
+        (u.name && u.name.toLowerCase().includes(q)) ||
+        (u.full_name && u.full_name.toLowerCase().includes(q))
       );
       renderAdminUsers(filtered);
     }
 
-    async function handleAdminOverridePlan(userId, planTier) {
+    // ── Subscription Payments Ledger Functions ──
+
+    async function loadSubPayments() {
+      const token = localStorage.getItem('mb_access_token');
+      const apiKey = localStorage.getItem('mb_api_key');
       const userEmail = localStorage.getItem('mb_user_email') || 'abdullahzaid509@gmail.com';
+      const headers = { 'x-user-email': userEmail };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      else if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+      const searchInput = document.getElementById('admin-payment-search');
+      const providerSelect = document.getElementById('admin-payment-provider');
+      const planSelect = document.getElementById('admin-payment-plan');
+
+      const params = new URLSearchParams();
+      if (searchInput && searchInput.value) params.set('search', searchInput.value.trim());
+      if (providerSelect && providerSelect.value) params.set('provider_filter', providerSelect.value);
+      if (planSelect && planSelect.value) params.set('plan_filter', planSelect.value);
+
       try {
-        const resp = await fetch(`/v1/admin/users/${userId}/plan`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-user-email': userEmail
-          },
-          body: JSON.stringify({ plan_tier: planTier })
-        });
-        const data = await resp.json();
-        alert(data.message || 'Plan updated.');
-        loadAdminDashboardData();
+        const resp = await fetch(`/v1/admin/subscription-payments?${params.toString()}`, { headers });
+        if (resp.ok) {
+          const data = await resp.json();
+          allSubPayments = data.payments || [];
+          renderAdminPayments(allSubPayments);
+        }
       } catch (e) {
-        alert('Failed to override plan: ' + e.message);
+        console.warn('Could not load subscription payments:', e);
       }
     }
 
-    async function handleAdminExtendTrial(userId, days) {
+    function handleSubPaymentSearch() {
+      loadSubPayments();
+    }
+
+    function renderAdminPayments(payments) {
+      const tbody = document.getElementById('admin-payments-table-body');
+      if (!tbody) return;
+
+      if (!payments || payments.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--color-text-secondary); padding: 24px;">No subscription payments recorded yet.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = payments.map(p => {
+        const isINR = (p.currency || 'USD').toUpperCase() === 'INR';
+        const formattedAmount = isINR ? `₹${parseFloat(p.amount).toFixed(2)}` : `$${parseFloat(p.amount).toFixed(2)}`;
+        const dateFormatted = p.created_at ? new Date(p.created_at).toLocaleDateString('en-US', {
+          month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        }) : '—';
+
+        let providerBadge = `<span class="badge badge-info">${escapeHtml(p.provider)}</span>`;
+        if (p.provider === 'stripe') providerBadge = `<span class="badge" style="background: rgba(99,91,255,0.12); color: #635bff; border: 1px solid rgba(99,91,255,0.3);">Stripe</span>`;
+        else if (p.provider === 'razorpay') providerBadge = `<span class="badge" style="background: rgba(14,165,233,0.12); color: #0284c7; border: 1px solid rgba(14,165,233,0.3);">Razorpay</span>`;
+        else if (p.provider === 'admin_grant') providerBadge = `<span class="badge" style="background: rgba(245,158,11,0.12); color: #d97706; border: 1px solid rgba(245,158,11,0.3);">Admin Grant</span>`;
+
+        return `
+          <tr>
+            <td style="padding: 10px 14px;">
+              <div style="font-weight: 500; color: var(--color-text-primary);">${escapeHtml(p.user_email)}</div>
+              <div class="text-xs text-muted">${escapeHtml(p.user_name || 'Customer')}</div>
+            </td>
+            <td style="padding: 10px 14px; text-transform: capitalize; font-weight: 500;">${escapeHtml(p.plan_tier)}</td>
+            <td style="padding: 10px 14px; font-size: 13px; text-transform: capitalize;">${escapeHtml(p.billing_cycle || 'monthly')}</td>
+            <td style="padding: 10px 14px; font-weight: 600; color: var(--color-text-primary); font-family: monospace;">${formattedAmount}</td>
+            <td style="padding: 10px 14px;">${providerBadge}</td>
+            <td style="padding: 10px 14px; font-mono text-xs text-muted;">${escapeHtml(p.provider_txn_id || p.provider_order_id || '—')}</td>
+            <td style="padding: 10px 14px;"><span class="badge badge-success">● Paid</span></td>
+            <td style="padding: 10px 14px; font-size: 12px; color: var(--color-text-secondary);">${dateFormatted}</td>
+            <td style="padding: 10px 14px; text-align: right;">
+              <button type="button" onclick="handleDeletePayment('${p.id}')" class="btn-ghost-danger" title="Delete record">
+                🗑
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function handleDeletePayment(paymentId) {
+      if (!confirm("Delete this payment record from the ledger?")) return;
+      const token = localStorage.getItem('mb_access_token');
+      const apiKey = localStorage.getItem('mb_api_key');
       const userEmail = localStorage.getItem('mb_user_email') || 'abdullahzaid509@gmail.com';
+      const headers = { 'x-user-email': userEmail };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      else if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
       try {
-        const resp = await fetch(`/v1/admin/users/${userId}/trial`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-user-email': userEmail
-          },
-          body: JSON.stringify({ days: parseInt(days) })
+        const resp = await fetch(`/v1/admin/subscription-payments/${paymentId}`, {
+          method: 'DELETE',
+          headers: headers
         });
-        const data = await resp.json();
-        alert(data.message || 'Trial extended.');
-        loadAdminDashboardData();
+        if (resp.ok) {
+          alert('✓ Payment record deleted.');
+          loadAdminDashboardData();
+        } else {
+          alert('Failed to delete payment record.');
+        }
       } catch (e) {
-        alert('Failed to extend trial: ' + e.message);
+        alert('Delete failed: ' + e.message);
       }
     }
 
-    async function handleAdminToggleStatus(userId, status) {
+    async function handleResetAllPayments() {
+      if (!confirm("Are you sure you want to RESET ALL subscription payments to ₹0 / clean slate?\n\nThis will remove all demo transaction records so you can start fresh.")) return;
+      const token = localStorage.getItem('mb_access_token');
+      const apiKey = localStorage.getItem('mb_api_key');
       const userEmail = localStorage.getItem('mb_user_email') || 'abdullahzaid509@gmail.com';
-      try {
-        const resp = await fetch(`/v1/admin/users/${userId}/status`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-user-email': userEmail
-          },
-          body: JSON.stringify({ status })
-        });
-        const data = await resp.json();
-        alert(data.message || 'Status updated.');
-        loadAdminDashboardData();
-      } catch (e) {
-        alert('Failed to update status: ' + e.message);
-      }
-    }
+      const headers = { 'x-user-email': userEmail };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      else if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
-    async function handleResetDemoPayments() {
-      if (!confirm("Are you sure you want to reset all mock/demo payments before going live?")) return;
-      const userEmail = localStorage.getItem('mb_user_email') || 'abdullahzaid509@gmail.com';
       try {
-        const resp = await fetch('/v1/admin/reset-demo-payments', {
+        const resp = await fetch('/v1/admin/subscription-payments/reset', {
           method: 'POST',
-          headers: { 'x-user-email': userEmail }
+          headers: headers
         });
         const data = await resp.json();
-        alert(data.message || 'Demo payments reset.');
+        alert(data.message || 'All subscription payments cleared!');
         loadAdminDashboardData();
       } catch (e) {
         alert('Reset failed: ' + e.message);
+      }
+    }
+
+    // ── Security, 2FA & Session Management Functions ──
+
+    async function loadSecurityData() {
+      const token = localStorage.getItem('mb_access_token');
+      const apiKey = localStorage.getItem('mb_api_key');
+      const userEmail = localStorage.getItem('mb_user_email') || '';
+      const headers = { 'x-user-email': userEmail };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      else if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+      // 1. Check 2FA Status
+      try {
+        const resp = await fetch('/v1/auth/2fa/status', { headers, credentials: 'include' });
+        if (resp.ok) {
+          const data = await resp.json();
+          const badge = document.getElementById('2fa-status-badge');
+          const disView = document.getElementById('2fa-disabled-view');
+          const enView = document.getElementById('2fa-enabled-view');
+          const setupView = document.getElementById('2fa-setup-view');
+
+          if (data.totp_enabled) {
+            badge.innerHTML = `<span class="badge badge-success">● Active</span>`;
+            if (disView) disView.style.display = 'none';
+            if (setupView) setupView.style.display = 'none';
+            if (enView) enView.style.display = 'block';
+          } else {
+            badge.innerHTML = `<span class="badge badge-warning">Disabled</span>`;
+            if (disView) disView.style.display = 'block';
+            if (setupView) setupView.style.display = 'none';
+            if (enView) enView.style.display = 'none';
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load 2FA status:', e);
+      }
+
+      // 2. Active Sessions
+      try {
+        const resp = await fetch('/v1/auth/sessions', { headers, credentials: 'include' });
+        if (resp.ok) {
+          const sessions = await resp.json();
+          const container = document.getElementById('sessions-list-container');
+          if (container) {
+            if (!sessions || sessions.length === 0) {
+              container.innerHTML = `<div class="text-xs text-muted">No other active sessions detected.</div>`;
+            } else {
+              container.innerHTML = sessions.map(s => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--color-bg-subtle); border: 1px solid var(--color-border); border-radius: 8px;">
+                  <div>
+                    <div style="font-weight: 500; font-size: 13px; color: var(--color-text-primary);">
+                      ${s.is_current ? '🟢 Current Session (This Device)' : '💻 ' + escapeHtml(s.device)}
+                    </div>
+                    <div class="text-xs text-muted" style="margin-top: 2px;">
+                      IP: ${escapeHtml(s.ip_address)} • Signed in ${new Date(s.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div>
+                    ${s.is_current ? '<span class="badge badge-success">Current</span>' : `<button onclick="handleRevokeSession('${s.id}')" class="btn btn-secondary" style="height: 28px; font-size: 11px;">Revoke</button>`}
+                  </div>
+                </div>
+              `).join('');
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load active sessions:', e);
+      }
+
+      // 3. Security Activity Logs
+      try {
+        const resp = await fetch('/v1/auth/security/logs', { headers, credentials: 'include' });
+        if (resp.ok) {
+          const logs = await resp.json();
+          const tbody = document.getElementById('security-logs-table-body');
+          if (tbody) {
+            if (!logs || logs.length === 0) {
+              tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--color-text-secondary); padding: 20px;">No recent security activity logged.</td></tr>`;
+            } else {
+              tbody.innerHTML = logs.map(l => {
+                let eventBadge = `<span class="badge badge-info">${escapeHtml(l.event_type)}</span>`;
+                if (l.event_type === 'login_success') eventBadge = `<span class="badge badge-success">Login Success</span>`;
+                else if (l.event_type === 'login_failed' || l.event_type === 'account_locked') eventBadge = `<span class="badge badge-warning">${escapeHtml(l.event_type)}</span>`;
+                else if (l.event_type.startsWith('2fa_')) eventBadge = `<span class="badge" style="background: rgba(139,92,246,0.12); color: #7c3aed; border: 1px solid rgba(139,92,246,0.3);">${escapeHtml(l.event_type)}</span>`;
+
+                return `
+                  <tr>
+                    <td style="padding: 10px 14px;">${eventBadge}</td>
+                    <td style="padding: 10px 14px; font-family: monospace; font-size: 12px;">${escapeHtml(l.ip_address || '—')}</td>
+                    <td style="padding: 10px 14px; font-size: 12px; color: var(--color-text-secondary); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(l.user_agent || '—')}</td>
+                    <td style="padding: 10px 14px; font-size: 12px; color: var(--color-text-secondary);">${escapeHtml(l.details || '—')}</td>
+                    <td style="padding: 10px 14px; font-size: 12px; color: var(--color-text-secondary);">${l.created_at ? new Date(l.created_at).toLocaleString() : '—'}</td>
+                  </tr>
+                `;
+              }).join('');
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load security logs:', e);
+      }
+    }
+
+    async function start2FASetup() {
+      const token = localStorage.getItem('mb_access_token');
+      const apiKey = localStorage.getItem('mb_api_key');
+      const userEmail = localStorage.getItem('mb_user_email') || '';
+      const headers = { 'x-user-email': userEmail };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      else if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+      try {
+        const resp = await fetch('/v1/auth/2fa/setup', { method: 'POST', headers, credentials: 'include' });
+        if (resp.ok) {
+          const data = await resp.json();
+          document.getElementById('2fa-secret-display').innerText = data.secret;
+          document.getElementById('2fa-disabled-view').style.display = 'none';
+          document.getElementById('2fa-setup-view').style.display = 'block';
+        } else {
+          alert('Could not initiate 2FA setup. Please try again.');
+        }
+      } catch (e) {
+        alert('Setup failed: ' + e.message);
+      }
+    }
+
+    function cancel2FASetup() {
+      document.getElementById('2fa-setup-view').style.display = 'none';
+      document.getElementById('2fa-disabled-view').style.display = 'block';
+    }
+
+    async function confirmEnable2FA() {
+      const code = document.getElementById('2fa-verify-code').value.trim();
+      if (!code || code.length !== 6) {
+        alert('Please enter the 6-digit code shown in your authenticator app.');
+        return;
+      }
+
+      const token = localStorage.getItem('mb_access_token');
+      const apiKey = localStorage.getItem('mb_api_key');
+      const userEmail = localStorage.getItem('mb_user_email') || '';
+      const headers = { 'Content-Type': 'application/json', 'x-user-email': userEmail };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      else if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+      try {
+        const resp = await fetch('/v1/auth/2fa/enable', {
+          method: 'POST',
+          headers,
+          credentials: 'include',
+          body: JSON.stringify({ code })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          alert('✓ ' + (data.message || '2FA successfully activated!'));
+          loadSecurityData();
+        } else {
+          alert('Verification failed: ' + (data.detail || 'Invalid code'));
+        }
+      } catch (e) {
+        alert('Error enabling 2FA: ' + e.message);
+      }
+    }
+
+    async function handleDisable2FA() {
+      if (!confirm("Are you sure you want to disable two-factor authentication?")) return;
+      const token = localStorage.getItem('mb_access_token');
+      const apiKey = localStorage.getItem('mb_api_key');
+      const userEmail = localStorage.getItem('mb_user_email') || '';
+      const headers = { 'Content-Type': 'application/json', 'x-user-email': userEmail };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      else if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+      try {
+        const resp = await fetch('/v1/auth/2fa/disable', {
+          method: 'POST',
+          headers,
+          credentials: 'include',
+          body: JSON.stringify({})
+        });
+        const data = await resp.json();
+        alert('✓ ' + (data.message || 'Two-factor authentication disabled.'));
+        loadSecurityData();
+      } catch (e) {
+        alert('Error disabling 2FA: ' + e.message);
+      }
+    }
+
+    async function handleRevokeAllOtherSessions() {
+      if (!confirm("Log out of all other devices and browser sessions?")) return;
+      const token = localStorage.getItem('mb_access_token');
+      const apiKey = localStorage.getItem('mb_api_key');
+      const userEmail = localStorage.getItem('mb_user_email') || '';
+      const headers = { 'x-user-email': userEmail };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      else if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+      try {
+        const resp = await fetch('/v1/auth/sessions/revoke-all', {
+          method: 'POST',
+          headers,
+          credentials: 'include'
+        });
+        const data = await resp.json();
+        alert('✓ ' + (data.message || 'All other devices logged out.'));
+        loadSecurityData();
+      } catch (e) {
+        alert('Error revoking sessions: ' + e.message);
+      }
+    }
+
+    async function handleRevokeSession(sessionId) {
+      const token = localStorage.getItem('mb_access_token');
+      const apiKey = localStorage.getItem('mb_api_key');
+      const userEmail = localStorage.getItem('mb_user_email') || '';
+      const headers = { 'x-user-email': userEmail };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      else if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+      try {
+        const resp = await fetch(`/v1/auth/sessions/${sessionId}`, {
+          method: 'DELETE',
+          headers,
+          credentials: 'include'
+        });
+        if (resp.ok) {
+          loadSecurityData();
+        }
+      } catch (e) {
+        console.warn('Error revoking session:', e);
       }
     }
 

@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from ...config import settings
 from ...database import get_db_session
-from ...models.db_models import Organization, Project, Membership, Invitation, APIKey, UserAccount, RefreshToken, EmailVerificationToken
+from ...models.db_models import Organization, Project, Membership, Invitation, APIKey, UserAccount, RefreshToken, EmailVerificationToken, SecurityAuditLog, SubscriptionPayment
 
 from ...auth.rbac_middleware import (
     AuthContext,
@@ -131,6 +131,16 @@ class LoginRequest(BaseModel):
     password: Optional[str] = Field(default=None, description="Account password")
     api_key: Optional[str] = Field(default=None, description="Active API key to log in")
     remember_me: bool = Field(default=False, description="Keep session persistent across browser restarts")
+    totp_code: Optional[str] = Field(default=None, description="6-digit authenticator TOTP code")
+
+
+class TOTPEnableRequest(BaseModel):
+    code: str = Field(..., min_length=6, max_length=6, description="6-digit code from authenticator app")
+
+
+class TOTPDisableRequest(BaseModel):
+    code: Optional[str] = Field(default=None, description="Current 6-digit TOTP code")
+    password: Optional[str] = Field(default=None, description="Account password to confirm disable")
 
 
 class GoogleAuthRequest(BaseModel):
@@ -1115,8 +1125,93 @@ def self_serve_login(
             detail="No account found with this email. Please sign up to create your workspace."
         )
 
+    now = datetime.now(timezone.utc)
+
+    # 1. Brute-Force Lockout Guard
+    if user.locked_until:
+        locked_utc = ensure_utc(user.locked_until)
+        if locked_utc and now < locked_utc:
+            mins_left = max(1, int((locked_utc - now).total_seconds() / 60) + 1)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Account temporarily locked due to consecutive failed login attempts. Try again in {mins_left} minutes."
+            )
+        else:
+            user.locked_until = None
+            user.failed_login_attempts = 0
+            db.commit()
+
     if not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Incorrect email or password.")
+        from ...auth.security_logger import log_security_event
+        user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+        if user.failed_login_attempts >= 5:
+            user.locked_until = now + timedelta(minutes=15)
+            db.commit()
+            log_security_event(
+                db=db,
+                event_type="account_locked",
+                user_id=user.id,
+                user_email=clean_email,
+                details={"reason": "5 consecutive failed attempts", "lock_duration_minutes": 15},
+                request=request
+            )
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Account locked for 15 minutes due to 5 consecutive failed login attempts."
+            )
+        else:
+            db.commit()
+            remaining = 5 - user.failed_login_attempts
+            log_security_event(
+                db=db,
+                event_type="login_failed",
+                user_id=user.id,
+                user_email=clean_email,
+                details={"failed_attempt": user.failed_login_attempts, "remaining": remaining},
+                request=request
+            )
+            raise HTTPException(
+                status_code=401,
+                detail=f"Incorrect email or password. ({remaining} attempt{'s' if remaining != 1 else ''} remaining before temporary lockout)"
+            )
+
+    # Reset lockout on successful credentials
+    user.failed_login_attempts = 0
+    user.locked_until = None
+
+    # 2. Two-Factor Authentication (TOTP) Guard
+    if getattr(user, "totp_enabled", False):
+        from ...auth.security_logger import log_security_event
+        if not payload.totp_code:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": "2fa_required",
+                    "requires_2fa": True,
+                    "message": "Two-factor authentication code required.",
+                    "email": clean_email
+                }
+            )
+        from ...auth.totp import verify_totp_code
+        if not verify_totp_code(user.totp_secret, payload.totp_code):
+            log_security_event(
+                db=db,
+                event_type="totp_failed",
+                user_id=user.id,
+                user_email=clean_email,
+                request=request
+            )
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid two-factor authentication code. Please check your authenticator app."
+            )
+        log_security_event(
+            db=db,
+            event_type="totp_verified",
+            user_id=user.id,
+            user_email=clean_email,
+            request=request
+        )
 
     # Email verification gate (active only when require_email_verification is enabled)
     if settings.require_email_verification and not user.is_verified:
@@ -1689,4 +1784,244 @@ def get_current_user(
             }
 
     raise HTTPException(status_code=401, detail="Not authenticated. Please log in.")
+
+
+# ── 2FA & Session Security Endpoints ──────────────────────────────────────────
+
+def get_auth_user_account(request: Request, db: Session = Depends(get_db_session)) -> UserAccount:
+    """Resolves authenticated user from Authorization Bearer token, refresh cookie, or x-user-email."""
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+        payload = decode_access_token(token)
+        if payload and payload.get("sub"):
+            user = db.query(UserAccount).filter(UserAccount.id == payload["sub"]).first()
+            if user:
+                return user
+
+    raw_token = request.cookies.get("mb_refresh_token")
+    if raw_token:
+        token_hash = hash_refresh_token(raw_token)
+        rt = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash, RefreshToken.revoked_at == None).first()
+        if rt:
+            user = db.query(UserAccount).filter(UserAccount.id == rt.user_id).first()
+            if user:
+                return user
+
+    user_email = request.headers.get("x-user-email", "").strip().lower()
+    if user_email:
+        user = db.query(UserAccount).filter(UserAccount.email == user_email).first()
+        if user:
+            return user
+
+    api_key_str = request.headers.get("x-api-key", "")
+    if api_key_str:
+        api_key = APIKeyService.verify_api_key(db, api_key_str)
+        if api_key:
+            mem = db.query(Membership).filter(Membership.org_id == api_key.org_id).first()
+            if mem:
+                user = db.query(UserAccount).filter(UserAccount.email == mem.email).first()
+                if user:
+                    return user
+
+    raise HTTPException(status_code=401, detail="Authentication required.")
+
+
+@router.post("/v1/auth/2fa/setup", summary="Generate 2FA secret and setup URI")
+@router.post("/api/v1/auth/2fa/setup", summary="Generate 2FA secret (Alias)")
+def setup_2fa(
+    request: Request,
+    user: UserAccount = Depends(get_auth_user_account),
+    db: Session = Depends(get_db_session)
+) -> Dict[str, Any]:
+    from ...auth.totp import generate_totp_secret, get_totp_uri
+    secret = generate_totp_secret()
+    user.totp_secret = secret
+    db.commit()
+    uri = get_totp_uri(secret=secret, email=user.email, issuer="AgentRoute")
+    return {
+        "status": "success",
+        "secret": secret,
+        "uri": uri,
+        "issuer": "AgentRoute",
+        "email": user.email
+    }
+
+
+@router.post("/v1/auth/2fa/enable", summary="Verify code and enable 2FA")
+@router.post("/api/v1/auth/2fa/enable", summary="Enable 2FA (Alias)")
+def enable_2fa(
+    payload: TOTPEnableRequest,
+    request: Request,
+    user: UserAccount = Depends(get_auth_user_account),
+    db: Session = Depends(get_db_session)
+) -> Dict[str, Any]:
+    from ...auth.totp import verify_totp_code
+    from ...auth.security_logger import log_security_event
+
+    if not user.totp_secret:
+        raise HTTPException(status_code=400, detail="2FA setup not initiated. Please call /v1/auth/2fa/setup first.")
+
+    if not verify_totp_code(user.totp_secret, payload.code):
+        raise HTTPException(status_code=400, detail="Invalid 6-digit verification code. Please check your authenticator app.")
+
+    user.totp_enabled = True
+    db.commit()
+    log_security_event(db, "2fa_enabled", user_id=user.id, user_email=user.email, request=request)
+
+    return {
+        "status": "enabled",
+        "message": "Two-factor authentication (2FA) is now active on your account."
+    }
+
+
+@router.post("/v1/auth/2fa/disable", summary="Disable 2FA")
+@router.post("/api/v1/auth/2fa/disable", summary="Disable 2FA (Alias)")
+def disable_2fa(
+    payload: TOTPDisableRequest,
+    request: Request,
+    user: UserAccount = Depends(get_auth_user_account),
+    db: Session = Depends(get_db_session)
+) -> Dict[str, Any]:
+    from ...auth.totp import verify_totp_code
+    from ...auth.security_logger import log_security_event
+
+    if not user.totp_enabled:
+        return {"status": "disabled", "message": "Two-factor authentication is already disabled."}
+
+    # Verify either code or password
+    verified = False
+    if payload.code and user.totp_secret and verify_totp_code(user.totp_secret, payload.code):
+        verified = True
+    elif payload.password and verify_password(payload.password, user.password_hash):
+        verified = True
+
+    if not verified:
+        raise HTTPException(status_code=400, detail="Invalid verification code or password to disable 2FA.")
+
+    user.totp_enabled = False
+    user.totp_secret = None
+    db.commit()
+    log_security_event(db, "2fa_disabled", user_id=user.id, user_email=user.email, request=request)
+
+    return {
+        "status": "disabled",
+        "message": "Two-factor authentication has been turned off."
+    }
+
+
+@router.get("/v1/auth/2fa/status", summary="Get 2FA status for current user")
+@router.get("/api/v1/auth/2fa/status", summary="Get 2FA status (Alias)")
+def get_2fa_status(user: UserAccount = Depends(get_auth_user_account)) -> Dict[str, Any]:
+    return {"totp_enabled": bool(user.totp_enabled)}
+
+
+@router.get("/v1/auth/sessions", summary="List active sessions for current user")
+@router.get("/api/v1/auth/sessions", summary="List sessions (Alias)")
+def list_user_sessions(
+    request: Request,
+    user: UserAccount = Depends(get_auth_user_account),
+    db: Session = Depends(get_db_session)
+) -> List[Dict[str, Any]]:
+    now = datetime.now(timezone.utc)
+    raw_current_token = request.cookies.get("mb_refresh_token")
+    current_hash = hash_refresh_token(raw_current_token) if raw_current_token else None
+
+    tokens = db.query(RefreshToken).filter(
+        RefreshToken.user_id == user.id,
+        RefreshToken.revoked_at == None,
+        RefreshToken.expires_at > now
+    ).order_by(RefreshToken.created_at.desc()).all()
+
+    sessions = []
+    for t in tokens:
+        is_current = bool(current_hash and t.token_hash == current_hash)
+        ua = t.user_agent or "Unknown browser"
+        device = "Desktop"
+        if "Mobile" in ua or "Android" in ua or "iPhone" in ua:
+            device = "Mobile"
+        sessions.append({
+            "id": t.id,
+            "ip_address": t.ip_address or "Unknown IP",
+            "user_agent": ua,
+            "device": device,
+            "is_current": is_current,
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+            "expires_at": t.expires_at.isoformat() if t.expires_at else None,
+        })
+    return sessions
+
+
+@router.post("/v1/auth/sessions/revoke-all", summary="Log out all other devices")
+@router.post("/api/v1/auth/sessions/revoke-all", summary="Log out other devices (Alias)")
+def revoke_all_other_sessions(
+    request: Request,
+    user: UserAccount = Depends(get_auth_user_account),
+    db: Session = Depends(get_db_session)
+) -> Dict[str, Any]:
+    from ...auth.security_logger import log_security_event
+    now = datetime.now(timezone.utc)
+    raw_current_token = request.cookies.get("mb_refresh_token")
+    current_hash = hash_refresh_token(raw_current_token) if raw_current_token else None
+
+    query = db.query(RefreshToken).filter(
+        RefreshToken.user_id == user.id,
+        RefreshToken.revoked_at == None
+    )
+    if current_hash:
+        query = query.filter(RefreshToken.token_hash != current_hash)
+
+    revoked_count = 0
+    for rt in query.all():
+        rt.revoked_at = now
+        revoked_count += 1
+
+    db.commit()
+    log_security_event(db, "sessions_revoked_all", user_id=user.id, user_email=user.email, details={"revoked_count": revoked_count}, request=request)
+
+    return {
+        "status": "success",
+        "message": f"Successfully revoked {revoked_count} other active session(s).",
+        "revoked_count": revoked_count
+    }
+
+
+@router.delete("/v1/auth/sessions/{session_id}", summary="Revoke a specific active session")
+@router.delete("/api/v1/auth/sessions/{session_id}", summary="Revoke session (Alias)")
+def revoke_session(
+    session_id: str,
+    user: UserAccount = Depends(get_auth_user_account),
+    db: Session = Depends(get_db_session)
+) -> Dict[str, Any]:
+    now = datetime.now(timezone.utc)
+    target = db.query(RefreshToken).filter(RefreshToken.id == session_id, RefreshToken.user_id == user.id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    target.revoked_at = now
+    db.commit()
+    return {"status": "success", "message": "Session revoked successfully."}
+
+
+@router.get("/v1/auth/security/logs", summary="List security audit logs for current user")
+@router.get("/api/v1/auth/security/logs", summary="Security logs (Alias)")
+def get_user_security_logs(
+    limit: int = 50,
+    user: UserAccount = Depends(get_auth_user_account),
+    db: Session = Depends(get_db_session)
+) -> List[Dict[str, Any]]:
+    logs = db.query(SecurityAuditLog).filter(
+        or_(SecurityAuditLog.user_id == user.id, SecurityAuditLog.user_email == user.email)
+    ).order_by(SecurityAuditLog.created_at.desc()).limit(limit).all()
+
+    return [
+        {
+            "id": l.id,
+            "event_type": l.event_type,
+            "ip_address": l.ip_address,
+            "user_agent": l.user_agent,
+            "details": l.details,
+            "created_at": l.created_at.isoformat() if l.created_at else None,
+        }
+        for l in logs
+    ]
 

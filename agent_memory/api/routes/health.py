@@ -7,10 +7,12 @@ from ...observability.metrics import metrics_registry
 router = APIRouter(tags=["Health & SRE"])
 
 
+@router.get("/health", summary="Simple Health Check")
+@router.get("/api/health", summary="Simple Health Check (Alias)")
 @router.get("/healthz/liveness", summary="Container & Database Liveness Probe")
 def liveness():
     """
-    Scraped by Better Uptime and Cloud Load Balancer.
+    Scraped by UptimeRobot, Better Uptime and Cloud Load Balancers.
     Performs active roundtrip query against the database; returns 503 if primary DB is down.
     """
     db_ok = check_db_health(timeout_seconds=3)

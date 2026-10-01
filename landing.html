@@ -3155,32 +3155,55 @@ hits = mb.assets.recall(
           body: JSON.stringify({ email, password, remember_me: rememberMe })
         });
         const data = await resp.json();
+        let responseData = data;
         if (resp.ok) {
-          if (data.status === 'unverified') {
-            pendingVerifyEmail = data.email || email;
+          if (responseData.status === '2fa_required' || responseData.requires_2fa) {
+            const totpCode = prompt('🛡️ Two-Factor Authentication:\n\nEnter the 6-digit code from your authenticator app (Google Authenticator, Authy, etc.):');
+            if (!totpCode || totpCode.trim().length !== 6) {
+              alert('Two-factor authentication code is required to sign in.');
+              return;
+            }
+            const retryResp = await fetch('/v1/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ email, password, remember_me: rememberMe, totp_code: totpCode.trim() })
+            });
+            const retryData = await retryResp.json();
+            if (!retryResp.ok) {
+              alert('2FA Verification Failed: ' + (retryData.detail || 'Invalid code'));
+              return;
+            }
+            responseData = retryData;
+          }
+
+          if (responseData.status === 'unverified') {
+            pendingVerifyEmail = responseData.email || email;
             document.getElementById('verify-email-target').innerText = pendingVerifyEmail;
             document.getElementById('auth-signin-view').style.display = 'none';
             document.getElementById('auth-verify-view').style.display = 'block';
             return;
           }
           // Store JWT access token
-          if (data.access_token) {
-            localStorage.setItem('mb_access_token', data.access_token);
+          if (responseData.access_token) {
+            localStorage.setItem('mb_access_token', responseData.access_token);
           }
           // Store API key for backward compatibility
-          if (data.api_key) {
-            localStorage.setItem('mb_api_key', data.api_key);
+          if (responseData.api_key) {
+            localStorage.setItem('mb_api_key', responseData.api_key);
           }
-          localStorage.setItem('mb_org_id', data.org ? data.org.id : '');
-          if (data.user && data.user.name) {
-            localStorage.setItem('mb_user_name', data.user.name);
-            localStorage.setItem('mb_user_email', data.user.email || email || '');
+          localStorage.setItem('mb_org_id', responseData.org ? responseData.org.id : '');
+          if (responseData.user && responseData.user.name) {
+            localStorage.setItem('mb_user_name', responseData.user.name);
+            localStorage.setItem('mb_user_email', responseData.user.email || email || '');
           } else if (email) {
             localStorage.setItem('mb_user_email', email);
             const guessedName = email.split('@')[0].replace(/[._+-]/g, ' ').split(' ').filter(Boolean).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ') || "Developer";
             localStorage.setItem('mb_user_name', guessedName);
           }
           window.location.href = '/dashboard';
+        } else if (resp.status === 429) {
+          alert('🛡️ Account Lockout Protection:\n\n' + (data.detail || 'Account temporarily locked due to too many failed attempts.'));
         } else if (resp.status === 403 || (data.detail && data.detail.toLowerCase().includes('verify your email'))) {
           // Unverified email - show inline resend banner & notification
           pendingVerifyEmail = email;
