@@ -9,13 +9,15 @@ from .config import settings
 from .models.db_models import Base
 
 
-# Configure connection pooling and URI normalization (e.g. Supabase postgres:// -> postgresql://)
+# Configure connection pooling and URI normalization (e.g. Supabase postgres:// -> postgresql+psycopg2://)
 def normalize_db_url(url: str) -> str:
     if not url:
         return url
     trimmed = url.strip()
     if trimmed.startswith("postgres://"):
-        trimmed = trimmed.replace("postgres://", "postgresql://", 1)
+        trimmed = trimmed.replace("postgres://", "postgresql+psycopg2://", 1)
+    elif trimmed.startswith("postgresql://") and not trimmed.startswith("postgresql+"):
+        trimmed = trimmed.replace("postgresql://", "postgresql+psycopg2://", 1)
     return trimmed
 
 primary_db_url = normalize_db_url(settings.database_url)
